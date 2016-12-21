@@ -1,0 +1,362 @@
+# Imports
+import pickle, re, sys
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+plt.ion()
+%load_ext rpy2.ipython
+from rpy2.robjects.packages import importr
+import rpy2.robjects as robjects
+importr('preprocessCore')
+importr('limma')
+%Rpull p.adjust
+from scipy.stats import spearmanr,pearsonr,combine_pvalues
+sys.path.append('/home/christophe/Dropbiz/Personal/Tools/python/')
+from seqanalysis import literatureLinkSearch
+
+# Default settings
+annotatedGenesOnly = True
+minimalCountPerSample = 1
+qualityCheck = False
+species = 'human'
+
+def speciesAnnotations(species='human',annotatedGenesOnly=annotatedGenesOnly):
+    if species == 'human':
+        # Prepare gene annotation
+        annotation = pd.read_table('/home/christophe/Data/Genomes/Ensembl/Biomart/idmapping_extended.txt',
+                                   header=None,names=('egid','etid','start','stop','gcC','chr','strand','TSS',
+                                                      'typeg','typet','gene_label','entrez'))
+
+        ## Filter duplicated ensembl gene ids and then use ids as index
+        annotation = annotation[annotation.egid.duplicated().apply(lambda x:not(x))]
+        annotation.index = annotation.pop('egid')
+        ## Filter non canonical genome positions
+        annotation = annotation[annotation.chr.isin([str(i) for i in range(1,23)]+['X','Y','M'])]
+    
+    elif species == 'zebrafish':
+        #annotation = pd.read_table('/home/christophe/Data/Genomes/Ensembl/Biomart/idZFtoHuman.txt',header=None,index_col=0)
+        #annotation = annot[~annot.index.duplicated()]
+        #Data sources: https://zfin.org/downloads
+        annotation = pd.read_table('/home/christophe/Data/Genomes/Ensembl/Biomart/zfin_ids.txt',header=None,index_col=3,
+                                   names=('zfinid','gene_so_id','gene_label','egid'),usecols=(0,1,2,3))
+        annotation = annotation[~annotation.duplicated()]
+        del annotation['gene_so_id']
+        zfin = pd.read_table('/home/christophe/Data/Genomes/Ensembl/Biomart/zfin_human_orthos.txt',header=None,index_col=0,usecols=list(range(10)),
+                             names=('zfinid','zfinsymbol','zfinname','human_orthologue','human_name','OMIMid','geneid','HGNCid','evidence','PubID'))
+        del zfin['OMIMid'], zfin['geneid'], zfin['HGNCid'], zfin['human_name'], zfin['zfinsymbol']
+        zfin = zfin[~zfin.index.duplicated()]
+        zfin = zfin[zfin.index.isin(annotation.zfinid)]
+        annotation = annotation.join(zfin,on='zfinid')
+        
+    if annotatedGenesOnly:
+        ## Filter genes without gene names
+        annotation = annotation[~annotation.gene_label.isnull()]
+            
+    ## Mapping dictionary
+    mf={i:annotation.ix[i].gene_label for i in annotation.index}
+    return annotation,mf
+
+# Prep counts
+def prepCounts(countsFile):
+    counts = pd.read_csv(countsFile,index_col=0)
+    
+    ## Minimal mean/variance
+    filterIDs = counts.sum(axis=1) > len(counts.columns)*minimalCountPerSample
+    print('{} filtered, {} retained'.format(len(filterIDs)-filterIDs.sum(),filterIDs.sum()))
+    counts = counts[filterIDs]
+
+    ## Only annotated counts
+    counts = counts[counts.index.isin(annotation.index)]
+    countsGeneLabels = list(counts.index.map(lambda x: annotation.ix[x].gene_label))
+    %Rpush countsGeneLabels
+
+    ## Normalize counts
+    %Rpush counts
+    counts_norm = %R normalize.quantiles(as.matrix(counts))
+    counts_norm = pd.DataFrame(counts_norm,index=counts.index,columns=counts.columns)
+    return (counts,counts_norm)
+
+# Quality check
+## PCA quality check
+def PCAcheck(counts):
+    """
+    TODO counts should already be normalized
+    TODO generalize, now assumes IMR and SY5Y celllines
+    """
+    %Rpush counts
+    %R counts_norm <- normalize.quantiles(as.matrix(counts))
+    %Rpull counts_norm
+    counts_norm = pd.DataFrame(counts_norm,index=counts.index,columns=counts.columns)
+    from sklearn.decomposition import PCA
+    pca = PCA(n_components=2)
+    cvar = counts_norm.var(axis=1)
+    varCutoff = cvar.ix[cvar.sort_values(ascending=False).index[1000]]
+    counts_pca = counts[cvar>varCutoff]
+    counts_pca = (counts_pca+1).apply(np.log2).transpose()
+    pca_fit = pca.fit_transform(counts_pca)
+    #colors=['b' if 'IMR' in c else 'r' for c in counts.columns]
+    #plt.scatter(pca_fit[:,0],pca_fit[:,1],c=colors)
+    plt.scatter(pca_fit[counts.columns.map(lambda x: 'IMR' in x),0],
+                pca_fit[counts.columns.map(lambda x: 'IMR' in x),1],c='b',label='IMR32')
+    plt.scatter(pca_fit[counts.columns.map(lambda x: 'IMR' not in x),0],
+                pca_fit[counts.columns.map(lambda x: 'IMR' not in x),1],c='r',label='SY5Y')
+    plt.xlabel('PC1')
+    plt.ylabel('PC2')
+    plt.legend(scatterpoints=1)
+    ##Label points
+    for (xy,s,b) in zip(pca_fit,shairpin,batch):
+        plt.annotate(b,xy,xytext = (-30,0),textcoords = 'offset points')
+        plt.annotate(s,xy)
+
+    plt.draw()
+
+## Clustering
+def clusterCounts(counts):
+    from scipy.spatial.distance import pdist,squareform
+    from scipy.cluster.hierarchy import linkage,dendrogram
+    Y=pdist(counts)
+    Z=linkage(Y)
+    dendrogram(Z,labels=[c[3:].split('-')[0] for c in counts.columns])
+
+## Calculate knockdown
+def calcKD(geneCounts,
+           grouping = lambda x: x.split('_')[0] + re.search('seq\d',x).group(),
+           controlregex=r'shcontrol',
+           treatments=(r'sh16',r'sh17')):
+    """
+    Missing values should be provided as np.NaN
+    """
+    kd = geneCounts.groupby(grouping
+    ).aggregate({t:lambda x,t=t: (x.filter(regex=t).get_values()[0] if x.filter(regex=t).any() else np.nan)/
+                 x.filter(regex=controlregex).get_values()[0]
+                 for t in treatments})
+    return kd
+
+## Plot counts for a gene
+def plotCounts(geneCounts,title=''):
+    groupedCounts = geneCounts.groupby(lambda x: x[:x.rindex('_')]
+    ).aggregate(lambda x: list(x))
+    plt.scatter([i for exp,i in zip(groupedCounts,range(len(groupedCounts))) for s in exp],
+                [s for exp,i in zip(groupedCounts,range(len(groupedCounts))) for s in exp])
+    plt.xticks(range(len(groupedCounts)),groupedCounts.index)
+    plt.title(title)
+
+## Differential expression analysis
+def DEA(contrasts=None,coefs=None,counts=None):
+    """
+    If counts is not provided, assumes it is already present in R environment.
+    If contrasts is given, they should also be already present in the R env.
+    The design always has to be already set up.
+    coefs can be given instead of contrasts, when the contrasts match the design parameters directly
+    """
+    if counts:
+        %Rpush counts
+    %R voomedCounts = voom(counts,design=designSamples,plot=TRUE,normalize="quantile")
+    %R fit <- lmFit(voomedCounts,designSamples)
+    %R fit <- eBayes(fit)
+    coefficients = %R fit$coefficients
+    if not (contrasts or coefs):
+        return coefficients
+    elif coefs:
+        %R fit_contrasts <- fit
+        contrasts = coefs
+    else:
+        %R fit_contrasts <- contrasts.fit(fit,contrast)
+        %R fit_contrasts <- eBayes(fit_contrasts)
+        %R print(summary(fit_contrasts))
+
+    #Full results
+    results = {}
+    for res in contrasts:
+        %Rpush res
+        %R result <- topTable(fit_contrasts,coef=res[1],n=dim(counts)[1])
+        %Rpull result
+        results[res] = result
+        results[res]['gene_label'] = results[res].index.map(lambda x: mf[x])
+        results[res]['gene_label_signed'] = results[res].logFC.map(
+            lambda x: '+' if x > 0 else '-')+results[res].gene_label
+        print('# sig',res,'->',(results[res]['adj.P.Val']<=0.05).sum())
+        
+    return results
+#limma volcanoplot and plotMDS need to be done either in qconsole or direct R environment
+
+# Gene-set analysis
+gc = pickle.load(open('/home/christophe/Data/Genomes/MSigDB/msigdb.pickle','br'))
+print('MSigDB version',gc['version'])
+gc = gc['MSigDB']
+
+def gsea_prep(gc,correctBackground=True):
+    """
+    When calling this function, countsGeneLabels should already be set up in R environment
+    gc is the geneset collection => a dict containing genesetcollections, containing genesets,
+       containing genes
+    """
+    if correctBackground:
+        %Rpull countsGeneLabels
+        gc = {gsc:{gs:[g for g in gc[gsc][gs] if g in countsGeneLabels] for gs in gc[gsc]} for gsc in gc}
+        
+    Hallmarks,C1,C2,C3,C4,C5,C6,C7 = (robjects.ListVector(gc['H']),robjects.ListVector(gc['C1']),
+                                      robjects.ListVector(gc['C2']),robjects.ListVector(gc['C3']),
+                                      robjects.ListVector(gc['C4']),robjects.ListVector(gc['C5']),
+                                      robjects.ListVector(gc['C6']),robjects.ListVector(gc['C7']))
+    %Rpush Hallmarks C1 C2 C3 C4 C5 C6 C7
+    %R H.indices <- ids2indices(Hallmarks, countsGeneLabels)
+    %R c1.indices <- ids2indices(C1, countsGeneLabels)
+    %R c2.indices <- ids2indices(C2, countsGeneLabels)
+    %R c3.indices <- ids2indices(C3, countsGeneLabels)
+    %R c4.indices <- ids2indices(C4, countsGeneLabels)
+    %R c5.indices <- ids2indices(C5, countsGeneLabels)
+    %R c6.indices <- ids2indices(C6, countsGeneLabels)
+    %R c7.indices <- ids2indices(C7, countsGeneLabels)
+    %R gs.indices <- list(H=H.indices,c1=c1.indices,c2=c2.indices,\
+                          c3=c3.indices,c4=c4.indices,c5=c5.indices,\
+                          c6=c6.indices,c7=c7.indices)
+
+def roastGenesets(genesets,contrast=None,coef=None,set_statistic="mean",addToRgsindicesName=False):
+    """
+    genesets should be a dictionary of genesets
+    """
+    genesets = robjects.ListVector(genesets)
+
+    if contrast:
+        res = contrast
+    elif coef:
+        res = coef
+    else:
+        raise Exception("Either contrast or coef should be provided")
+    %Rpush genesets
+    %R sets.indices <- ids2indices(genesets, countsGeneLabels)
+    if addToRgsindicesName:
+        %Rpush addToRgsindicesName
+        %R gs.indices[[addToRgsindicesName]] <- sets.indices
+    if contrast:
+        roasted = %R mroast(voomedCounts,sets.indices,design=designSamples,contrast=contrast[,{res}],set.statistic="{set_statistic}")
+    else:
+        roasted = %R mroast(voomedCounts,sets.indices,design=designSamples,contrast={res},set.statistic="{set_statistic}")
+
+    return roasted
+
+    # Adapted signatures
+    #hotspots=list({g for k in gc['C2'] for g in gc['C2'][k] if 'HOT_SPOT' in k})
+    #gc['C2']['ALL_HOTSPOTS']=hotspots
+    #C2a=robjects.ListVector(gc['C2'])
+    #%Rpush C2a
+    #%R c2a.indices <- ids2indices(C2a, countsGeneLabels)
+    #hotcounts = counts_norm[counts_norm.index.isin(annotation.gene_label.isin(hotspots).index)]
+
+    #%R download.file("http://bioinf.wehi.edu.au/software/MSigDB/human_H_v5p1.rdata",
+    #                 "/tmp/human_H_v5p1.rdata", mode = "wb")
+    #%R load("/tmp/human_H_v5p1.rdata")
+    #%R H.indices <- ids2indices(Hs.H, entrezlist)
+
+def gsea_run(contrasts=None,coefs=None,gsCollections=('H','c1','c2','c3','c4','c5','c6','c7'),algorithm='mroast'):
+    # Set algorithm
+    if algorithm == 'mroast':
+        %R gsea <- mroast
+    elif algorithm == 'fry':
+        %R gsea <- fry
+    elif algorithm == 'romer':
+        %R gsea <- romer
+    else:
+        raise Exception("Unkown algorithm")
+    # Run gene-set analysis
+    gseCatResults = {}
+    if coefs and contrasts:
+        raise Exception("Provide either contrasts or coefs, not both")
+    elif coefs:
+        contrasts = coefs
+    for categ in gsCollections:
+        %Rpush categ
+        gseResults = {}
+        for res in contrasts: #('I16','I17','S16','S17'):
+            %Rpush res
+            if coefs:
+                roasted = %R roasted <- data.frame(gsea(voomedCounts,gs.indices[[categ]],design=designSamples,contrast=res))
+            else:
+                roasted = %R roasted <- data.frame(voomedCounts,gs.indices[[categ]],design=designSamples,contrast=contrast[,res]))
+            gseResults[res] = roasted
+        gseCatResults[categ] = gseResults
+        #%R topRomer(romerResult,alt="up",n=20)
+    return gseCatResults
+
+# combinedGSEresults = pd.DataFrame({res:gseResults[res].PValue for res in ('I16','I17','S16','S17')})
+# combinedGSEresults['combi_p'] = combinedGSEresults.apply(lambda x: combine_pvalues(x)[1],axis=1)
+# combinedGSEresults = combinedGSEresults.sort_values('combi_p')
+# combip = combinedGSEresults.combi_p
+# %Rpush combip
+# combipa = %R p.adjust(combip)
+# combinedGSEresults['FDR'] = combipa
+
+## Make limma barcodeplot
+#%R barcodeplot(fit_contrasts$t[,res],c3.indices[[ "V$SP1_Q6" ]])
+
+# Spearman correlation analysis
+def g4spear(deResults,geneG4s,minG4=0,geneAvExpression=None,quantiles=None):
+    t = deResults.t
+    g4s = geneG4s[geneG4s.index.isin(t.index)]
+    if minG4:
+        g4s = g4s[g4s>=minG4]
+        t = t[t.index.isin(g4s.index)]
+        print('Genes included:',len(g4s))
+    print('ALL',spearmanr(t.sort_index(),g4s.sort_index()))
+    tdown = t[t<0]
+    g4down = geneG4s[geneG4s.index.isin(tdown.index)]
+    print('D',spearmanr(tdown.sort_index(),g4down.sort_index()))
+    tup = t[t>0]
+    g4up = geneG4s[geneG4s.index.isin(tup.index)]
+    print('U',spearmanr(tup.sort_index(),g4up.sort_index()))
+
+    for q in quantiles:
+        print('Quantile',q)
+        qs = geneAvExpression[geneAvExpression >= geneAvExpression.quantile(q)].index
+        tq = t[t.index.isin(qs)]
+        g4sq = g4s[g4s.index.isin(qs)]
+        print('ALL',spearmanr(tq.sort_index(),g4sq.sort_index()))
+        tdownq = tdown[tdown.index.isin(qs)]
+        g4downq = g4down[g4down.index.isin(qs)]
+        print('D',spearmanr(tdownq.sort_index(),g4downq.sort_index()))
+        tupq = tup[tup.index.isin(qs)]
+        g4upq = g4up[g4up.index.isin(qs)]
+        print('U',spearmanr(tupq.sort_index(),g4upq.sort_index()))
+
+    return (tup.sort_index(),g4up.sort_index())
+
+# # GSEA preranked
+# results_sel=results[results.gene_label.map(lambda x: not(x.startswith('ENSG')))]
+# #results_sel['rank'] = list(range(0,len(results_sel)))
+# results_sel[['gene_label','P.Value']].to_csv('/home/christophe/tmp/brip1_RMNE_I17.rnk',sep='\t',header=None,index=False)
+
+# results_sel['ranking'] = results_sel.apply(lambda x: np.sign(x.shairpinsh16+x.shairpinsh17)*(abs(x.shairpinsh16+x.shairpinsh17)**np.log(1./
+# x['P.Value'])),axis=1)
+# results_sel[['gene_label','ranking']].to_csv('/home/christophe/tmp/brip1_RSEM_fcp.rnk',sep='\t',header=None,index=False)
+
+# # Fisher exact
+# from scipy.stats import fisher_exact
+# def rankedGenesFE(rankedGenes,geneset):
+#     rankedGenes = rankedGenes[rankedGenes.gene_label.apply(lambda x: not(x.startswith('ENSG')))].gene_label
+#     fisherValues = []
+#     for i in range(1,len(rankedGenes)):
+#         g4gU = len(set(rankedGenes[:i])&geneset)
+#         g0gU = i - g4gU
+#         g4gD = len(set(rankedGenes[i:])&geneset)
+#         g0gD = len(rankedGenes) - i - g4gD
+#         fisherValues.append(fisher_exact([[g4gU,g4gD],[g0gU,g0gD]])[1])
+#     return fisherValues
+
+# fisherValues={ga:rankedGenesFE(results['I17'],genesets[ga]) for ga in genesets}
+# for ga in sorted(fisherValues):
+#     print(ga,min(fisherValues[ga]),fisherValues[ga].index(min(fisherValues[ga])))
+
+# def siggroupsFE(resultset,genesets,sigstat='P.Value',siglevel=0.05):
+#     for res in sorted(resultset):
+#         results = resultset[res]
+#         sigGenes = set(results[results[sigstat]<=siglevel].gene_label)
+#         usigGenes = set(results[results[sigstat]>siglevel].gene_label)
+#         print(res,len(sigGenes))
+#         for ga in sorted(genesets):
+#             geneset = genesets[ga]
+#             g4gU = len(sigGenes&geneset)
+#             g0gU = len(sigGenes) - g4gU
+#             g4gD = len(usigGenes&geneset)
+#             g0gD = len(usigGenes) - g4gD
+#             print(ga,fisher_exact([[g4gU,g4gD],[g0gU,g0gD]])[1])
