@@ -11,7 +11,6 @@ importr('preprocessCore')
 importr('limma')
 %Rpull p.adjust
 from scipy.stats import spearmanr,pearsonr,combine_pvalues
-sys.path.append('/home/christophe/Dropbiz/Personal/Tools/python/')
 from seqanalysis import literatureLinkSearch
 
 # Default settings
@@ -19,11 +18,12 @@ annotatedGenesOnly = True
 minimalCountPerSample = 1
 qualityCheck = False
 species = 'human'
+datasetdir = '/home/christophe/Dropbiz/Lab/z_archive/Datasets/'
 
 def speciesAnnotations(species='human',annotatedGenesOnly=annotatedGenesOnly):
     if species == 'human':
         # Prepare gene annotation
-        annotation = pd.read_table('/home/christophe/Data/Genomes/Ensembl/Biomart/idmapping_extended.txt',
+        annotation = pd.read_table(datasetdir+'Genomes/Ensembl/Biomart/idmapping_extended.txt',
                                    header=None,names=('egid','etid','start','stop','gcC','chr','strand','TSS',
                                                       'typeg','typet','gene_label','entrez'))
 
@@ -34,14 +34,14 @@ def speciesAnnotations(species='human',annotatedGenesOnly=annotatedGenesOnly):
         annotation = annotation[annotation.chr.isin([str(i) for i in range(1,23)]+['X','Y','M'])]
     
     elif species == 'zebrafish':
-        #annotation = pd.read_table('/home/christophe/Data/Genomes/Ensembl/Biomart/idZFtoHuman.txt',header=None,index_col=0)
+        #annotation = pd.read_table(datasetdir+'Genomes/Ensembl/Biomart/idZFtoHuman.txt',header=None,index_col=0)
         #annotation = annot[~annot.index.duplicated()]
         #Data sources: https://zfin.org/downloads
-        annotation = pd.read_table('/home/christophe/Data/Genomes/Ensembl/Biomart/zfin_ids.txt',header=None,index_col=3,
+        annotation = pd.read_table(datasetdir+'Genomes/Ensembl/Biomart/zfin_ids.txt',header=None,index_col=3,
                                    names=('zfinid','gene_so_id','gene_label','egid'),usecols=(0,1,2,3))
         annotation = annotation[~annotation.duplicated()]
         del annotation['gene_so_id']
-        zfin = pd.read_table('/home/christophe/Data/Genomes/Ensembl/Biomart/zfin_human_orthos.txt',header=None,index_col=0,usecols=list(range(10)),
+        zfin = pd.read_table(datasetdir+'Genomes/Ensembl/Biomart/zfin_human_orthos.txt',header=None,index_col=0,usecols=list(range(10)),
                              names=('zfinid','zfinsymbol','zfinname','human_orthologue','human_name','OMIMid','geneid','HGNCid','evidence','PubID'))
         del zfin['OMIMid'], zfin['geneid'], zfin['HGNCid'], zfin['human_name'], zfin['zfinsymbol']
         zfin = zfin[~zfin.index.duplicated()]
@@ -57,8 +57,8 @@ def speciesAnnotations(species='human',annotatedGenesOnly=annotatedGenesOnly):
     return annotation,mf
 
 # Prep counts
-def prepCounts(countsFile):
-    counts = pd.read_csv(countsFile,index_col=0)
+def prepCounts(countsFile,sep=','):
+    counts = pd.read_csv(countsFile,index_col=0,sep=sep)
     
     ## Minimal mean/variance
     filterIDs = counts.sum(axis=1) > len(counts.columns)*minimalCountPerSample
