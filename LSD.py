@@ -52,14 +52,18 @@ def retrieveSources(dataset_getfunction):
 
     If filename is not provided, the last part of the url (after last '/')
     is taken as filename.
+
+    Source lines can also be provided as arguments to the FileNotFoundError
+    that the dataset_getfunction throws.
     """
     import inspect, requests
+    from urllib.request import urlopen
 
     def wrapper(*args, **kwargs):
         try:
             return dataset_getfunction(*args, **kwargs)
-        except FileNotFoundError:
-            for docline in inspect.getdoc(dataset_getfunction).split('\n'):
+        except FileNotFoundError as fnf:
+            for docline in inspect.getdoc(dataset_getfunction).split('\n') + list(fnf.args):
                 if docline.startswith('Source:'):
                     docline = docline.split()
                     if len(docline) == 2:
@@ -68,10 +72,20 @@ def retrieveSources(dataset_getfunction):
                     elif len(docline) == 3:
                         url = docline[2]
                         filename = docline[1]
-                if not exists(processedDataStorage+filename):
-                    r = requests.get(url)
-                    with open(processedDataStorage+filename,'wb') as f:
-                        f.write(r.content)
+                    if not exists(processedDataStorage+filename):
+                        r = urlopen(url) if url.startswith('ftp://') else requests.get(url,stream=True)
+                        total_length = r.headers.get('content-length')
+                        with open(processedDataStorage+filename,'wb') as f:
+                            if total_length is None: f.write(r.content)
+                            else:
+                                dl = 0
+                                total_length = int(total_length)
+                                print('Downloading {}:'.format(filename))
+                                for data in r.fp.file if url.startswith('ftp://') else r.iter_content(chunk_size=4096):
+                                    dl += len(data)
+                                    f.write(data)
+                                    done = int(50 * dl / total_length)
+                                    print("\r[{}{}]".format('=' * done, ' ' * (50-done)),end='',flush=True)
             try: return dataset_getfunction(*args, **kwargs)
             except FileNotFoundError:
                 print('Either not all source files are documented correctly in docstring,',
@@ -130,12 +144,12 @@ def get_ensemblGeneannot():
     Source: ftp://ftp.ensembl.org/pub/release-88/gtf/homo_sapiens/Homo_sapiens.GRCh38.88.gtf.gz
     """
     import gffutils
-    try: db = gffutils.FeatureDB(processedDataStorage+'Homo_sapiens.GRCh38.86.sqlite3')
+    try: db = gffutils.FeatureDB(processedDataStorage+'Homo_sapiens.GRCh38.88.sqlite3')
     except ValueError:
-        if not exists(processedDataStorage+'Homo_sapiens.GRCh38.86.gtf.gz'):
+        if not exists(processedDataStorage+'Homo_sapiens.GRCh38.88.gtf.gz'):
             raise FileNotFoundError
-        db = gffutils.create_db(processedDataStorage+'Homo_sapiens.GRCh38.86.gtf.gz',
-                                processedDataStorage+'Homo_sapiens.GRCh38.86.sqlite3',
+        db = gffutils.create_db(processedDataStorage+'Homo_sapiens.GRCh38.88.gtf.gz',
+                                processedDataStorage+'Homo_sapiens.GRCh38.88.sqlite3',
                                 disable_infer_genes=True,disable_infer_transcripts=True)
     return db
     
@@ -146,24 +160,21 @@ def get_entrez():
     entrez = pd.read_table('Dropbiz/Lab/z_archive/Datasets/Genomes/Entrez/gene_RefSeqGene', index_col='GeneID')
     return entrez
 
+@retrieveSources
 def get_liftover(frm=19,to=38):
     """
     Info: http://hgdownload.cse.ucsc.edu/downloads.html
-    Source: http://hgdownload.cse.ucsc.edu/gbdb/hg19/liftOver/hg19ToHg38.over.chain.gz
     """
     from pyliftover import LiftOver
     liftoverfile = 'hg{}ToHg{}.over.chain.gz'.format(frm,to)
-    try: lo = LiftOver(processedDataStorage+liftoverfile)
+    try: return LiftOver(processedDataStorage+liftoverfile)
     except FileNotFoundError:
-        import requests
-        liftoverurl = 'http://hgdownload.cse.ucsc.edu/gbdb/hg{}/liftOver/{}'.format(frm,liftoverfile)
-        r = requests.get(liftoverurl)
-        with open(processedDataStorage+liftoverfile,'wb') as file:
-            file.write(r.content)
-        lo = LiftOver(processedDataStorage+liftoverfile)
-    return lo
+        raise FileNotFoundError('Source: http://hgdownload.cse.ucsc.edu/gbdb/hg{}/liftOver/{}'.format(frm,liftoverfile))
 
 def get_lift19to38():
+    """
+    Source: http://hgdownload.cse.ucsc.edu/gbdb/hg19/liftOver/hg19ToHg38.over.chain.gz
+    """
     return get_liftover(frm=19,to=38)
 
 @storeDatasetLocally
