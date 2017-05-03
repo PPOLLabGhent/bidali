@@ -158,12 +158,13 @@ def get_ensemblGeneannot():
                                 processedDataStorage+'Homo_sapiens.GRCh38.88.sqlite3',
                                 disable_infer_genes=True,disable_infer_transcripts=True)
     return db
-    
+
+@retrieveSources
 def get_entrez():
     """
     Source: ftp://ftp.ncbi.nih.gov/refseq/H_sapiens/RefSeqGene/gene_RefSeqGene
     """
-    entrez = pd.read_table('Dropbiz/Lab/z_archive/Datasets/Genomes/Entrez/gene_RefSeqGene', index_col='GeneID')
+    entrez = pd.read_table(processedDataStorage+'gene_RefSeqGene', index_col='GeneID')
     return entrez
 
 @retrieveSources
@@ -186,10 +187,9 @@ def get_lift19to38():
 @storeDatasetLocally
 def get_proteinNetworks():
     """
-    Sources: 
-      https://thebiogrid.org/downloads/archives/Release%20Archive/BIOGRID-3.4.147/BIOGRID-ALL-3.4.147.tab2.zip
-      http://string-db.org/download/protein.links.v10/9606.protein.links.v10.txt.gz
-      http://string-db.org/mapping_files/entrez_mappings/entrez_gene_id.vs.string.v10.28042015.tsv
+    Source: https://thebiogrid.org/downloads/archives/Release%20Archive/BIOGRID-3.4.147/BIOGRID-ALL-3.4.147.tab2.zip
+    Source: http://string-db.org/download/protein.links.v10/9606.protein.links.v10.txt.gz
+    Source: http://string-db.org/mapping_files/entrez_mappings/entrez_gene_id.vs.string.v10.28042015.tsv
     """
     import networkx as nx
 
@@ -341,10 +341,6 @@ def get_FischerData():
     del exprdata['probeset']
 
     #aCGH
-    from pyliftover import LiftOver
-    import gffutils
-    lo = get_lift19to38()
-    genannot = gffutils.FeatureDB('/home/christophe/Data/Genomes/Homo_sapiens.GRCh38.86.sqlite3')
     aCGH = pd.read_table(datadir+'R2_grabbed_data/Fischer498/SEQC_aCGH/SEQC_aCGH_all_146.txt')
     geosearch = metadata[['Sample_title','Sample_geo_accession']].copy()
     geosearch.Sample_geo_accession = geosearch.index
@@ -353,14 +349,17 @@ def get_FischerData():
     del geosearch
     aCGH['log2ratio'] = (aCGH.CN/2).apply(np.log2)
     #Convert coordinates to hg38
+    lo = get_lift19to38()
     aCGH['Start38'] = aCGH.T.apply(lambda x: lo.convert_coordinate(x.Chromosome,x.Start)).apply(lambda x: x[0][1] if x else np.nan)
     aCGH['End38'] = aCGH.T.apply(lambda x: lo.convert_coordinate(x.Chromosome,x.End)).apply(lambda x: x[0][1] if x else np.nan)
-    del aCGH['Start'], aCGH['End']
-    aCGH = aCGH.dropna()
+    del lo, aCGH['Start'], aCGH['End']
+    aCGH = aCGH.dropna().copy()
     #Assign genes to regions
+    genannot = get_ensemblGeneannot()
     aCGH['genes'] = aCGH.T.apply(lambda x: {f.attributes['gene_name'][0] for f in genannot.region('{}:{}-{}'
-                                                .format(x.Chromosome,int(x.Start38),int(x.End38))) if f.featuretype == 'gene'})
+                                                    .format(x.Chromosome[3:],int(x.Start38),int(x.End38)),featuretype='gene')})
     aCGH['nrGenes'] = aCGH.genes.apply(len)
+    del genannot
     #To set cut offs look at hist => aCGH.log2ratio.hist(ax=ax,bins='auto')
     aCGH['annotation'] = aCGH.log2ratio.apply(lambda x: 'gain' if x > 0.3 else ('loss' if x < -0.3 else 'normal'))
     
