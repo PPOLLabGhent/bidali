@@ -57,7 +57,7 @@ def retrieveSources(dataset_getfunction):
     that the dataset_getfunction throws.
     """
     import inspect, requests
-    from urllib.request import urlopen
+    from urllib.request import urlopen, urlretrieve
 
     def wrapper(*args, **kwargs):
         try:
@@ -73,19 +73,25 @@ def retrieveSources(dataset_getfunction):
                         url = docline[2]
                         filename = docline[1]
                     if not exists(processedDataStorage+filename):
-                        r = urlopen(url) if url.startswith('ftp://') else requests.get(url,stream=True)
-                        total_length = r.headers.get('content-length')
-                        with open(processedDataStorage+filename,'wb') as f:
-                            if total_length is None: f.write(r.content)
-                            else:
-                                dl = 0
-                                total_length = int(total_length)
-                                print('Downloading {}:'.format(filename))
-                                for data in r.fp.file if url.startswith('ftp://') else r.iter_content(chunk_size=4096):
-                                    dl += len(data)
-                                    f.write(data)
-                                    done = int(50 * dl / total_length)
-                                    print("\r[{}{}]".format('=' * done, ' ' * (50-done)),end='',flush=True)
+                        print('Downloading {}:'.format(filename))
+                        if url.startswith('ftp://'):
+                            urlretrieve(url,processedDataStorage+filename,
+                                        lambda x,y,z: print("\r[{}{}]".format('=' * int(50*x*y/z),
+                                                                              ' ' * (50-int(50*x*y/z))),
+                                                            end='',flush=True))
+                        else:
+                            r = requests.get(url,stream=True)
+                            total_length = r.headers.get('content-length')
+                            with open(processedDataStorage+filename,'wb') as f:
+                                if total_length is None: f.write(r.content)
+                                else:
+                                    dl = 0
+                                    total_length = int(total_length)
+                                    for data in r.iter_content(chunk_size=4096):
+                                        dl += len(data)
+                                        f.write(data)
+                                        done = int(50 * dl / total_length)
+                                        print("\r[{}{}]".format('=' * done, ' ' * (50-done)),end='',flush=True)
             try: return dataset_getfunction(*args, **kwargs)
             except FileNotFoundError:
                 print('Either not all source files are documented correctly in docstring,',
