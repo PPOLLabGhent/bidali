@@ -39,6 +39,47 @@ class Dataset:
     def to_R(self):
         pass
 
+
+def retrieveSources(dataset_getfunction):
+    """
+    A dataset_getfunction function that contains 'Source:' lines
+    in the docstring, can be decorated with this function.
+    If a source is not locally available, it will be downloaded
+    and added to the processedDataStorage location.
+
+    A source line has to be formatted accordingly:
+    Source: [filename] url
+
+    If filename is not provided, the last part of the url (after last '/')
+    is taken as filename.
+    """
+    import inspect, requests
+
+    def wrapper(*args, **kwargs):
+        try:
+            return dataset_getfunction(*args, **kwargs)
+        except FileNotFoundError:
+            for docline in inspect.getdoc(dataset_getfunction).split('\n'):
+                if docline.startswith('Source:'):
+                    docline = docline.split()
+                    if len(docline) == 2:
+                        url = docline[1]
+                        filename = url[url.rindex('/')+1:]
+                    elif len(docline) == 3:
+                        url = docline[2]
+                        filename = docline[1]
+                if not exists(processedDataStorage+filename):
+                    r = requests.get(url)
+                    with open(processedDataStorage+filename,'wb') as f:
+                        f.write(r.content)
+            try: return dataset_getfunction(*args, **kwargs)
+            except FileNotFoundError:
+                print('Either not all source files are documented correctly in docstring,',
+                      'or there is a source file unrelated issue')
+                raise
+
+    return wrapper
+
 def storeDatasetLocally(dataset_getfunction):
     """
     Can be used as a decorator for 'get_dataset' functions.
@@ -82,12 +123,48 @@ def get_ensembl(onlyGeneLabeled=True,onlyInChromosomes=None):
     if onlyInChromosomes: ensembl = ensembl[ensembl.chr.isin(onlyInChromosomes)]
     return ensembl
 
+@retrieveSources
+def get_ensemblGeneannot():
+    """
+    Info: http://www.ensembl.org/info/data/ftp/index.html
+    Source: ftp://ftp.ensembl.org/pub/release-88/gtf/homo_sapiens/Homo_sapiens.GRCh38.88.gtf.gz
+    """
+    import gffutils
+    try: db = gffutils.FeatureDB(processedDataStorage+'Homo_sapiens.GRCh38.86.sqlite3')
+    except ValueError:
+        if not exists(processedDataStorage+'Homo_sapiens.GRCh38.86.gtf.gz'):
+            raise FileNotFoundError
+        db = gffutils.create_db(processedDataStorage+'Homo_sapiens.GRCh38.86.gtf.gz',
+                                processedDataStorage+'Homo_sapiens.GRCh38.86.sqlite3',
+                                disable_infer_genes=True,disable_infer_transcripts=True)
+    return db
+    
 def get_entrez():
     """
     Source: ftp://ftp.ncbi.nih.gov/refseq/H_sapiens/RefSeqGene/gene_RefSeqGene
     """
     entrez = pd.read_table('Dropbiz/Lab/z_archive/Datasets/Genomes/Entrez/gene_RefSeqGene', index_col='GeneID')
     return entrez
+
+def get_liftover(frm=19,to=38):
+    """
+    Info: http://hgdownload.cse.ucsc.edu/downloads.html
+    Source: http://hgdownload.cse.ucsc.edu/gbdb/hg19/liftOver/hg19ToHg38.over.chain.gz
+    """
+    from pyliftover import LiftOver
+    liftoverfile = 'hg{}ToHg{}.over.chain.gz'.format(frm,to)
+    try: lo = LiftOver(processedDataStorage+liftoverfile)
+    except FileNotFoundError:
+        import requests
+        liftoverurl = 'http://hgdownload.cse.ucsc.edu/gbdb/hg{}/liftOver/{}'.format(frm,liftoverfile)
+        r = requests.get(liftoverurl)
+        with open(processedDataStorage+liftoverfile,'wb') as file:
+            file.write(r.content)
+        lo = LiftOver(processedDataStorage+liftoverfile)
+    return lo
+
+def get_lift19to38():
+    return get_liftover(frm=19,to=38)
 
 @storeDatasetLocally
 def get_proteinNetworks():
@@ -247,6 +324,10 @@ def get_FischerData():
     del exprdata['probeset']
 
     #aCGH
+    from pyliftover import LiftOver
+    import gffutils
+    lo = get_lift19to38()
+    genannot = gffutils.FeatureDB('/home/christophe/Data/Genomes/Homo_sapiens.GRCh38.86.sqlite3')
     aCGH = pd.read_table(datadir+'R2_grabbed_data/Fischer498/SEQC_aCGH/SEQC_aCGH_all_146.txt')
     geosearch = metadata[['Sample_title','Sample_geo_accession']].copy()
     geosearch.Sample_geo_accession = geosearch.index
@@ -254,6 +335,15 @@ def get_FischerData():
     aCGH.Sample = aCGH.Sample.apply(lambda x: geosearch.ix[x].Sample_geo_accession)
     del geosearch
     aCGH['log2ratio'] = (aCGH.CN/2).apply(np.log2)
+    #Convert coordinates to hg38
+    aCGH['Start38'] = aCGH.T.apply(lambda x: lo.convert_coordinate(x.Chromosome,x.Start)).apply(lambda x: x[0][1] if x else np.nan)
+    aCGH['End38'] = aCGH.T.apply(lambda x: lo.convert_coordinate(x.Chromosome,x.End)).apply(lambda x: x[0][1] if x else np.nan)
+    del aCGH['Start'], aCGH['End']
+    aCGH = aCGH.dropna()
+    #Assign genes to regions
+    aCGH['genes'] = aCGH.T.apply(lambda x: {f.attributes['gene_name'][0] for f in genannot.region('{}:{}-{}'
+                                                .format(x.Chromosome,int(x.Start38),int(x.End38))) if f.featuretype == 'gene'})
+    aCGH['nrGenes'] = aCGH.genes.apply(len)
     #To set cut offs look at hist => aCGH.log2ratio.hist(ax=ax,bins='auto')
     aCGH['annotation'] = aCGH.log2ratio.apply(lambda x: 'gain' if x > 0.3 else ('loss' if x < -0.3 else 'normal'))
     
