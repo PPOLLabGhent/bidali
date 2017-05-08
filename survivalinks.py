@@ -5,7 +5,7 @@ from lifelines import KaplanMeierFitter
 from lifelines.statistics import logrank_test
 import matplotlib.pyplot as plt
 
-#Calculate survival impact for each gene
+# Calculate survival impact for each gene
 def geneImpactSurvival(gene,expressions,metadata,groupingByQuantile=0.5,grouping=None,filter=None,
                        metacensorcol="overall_survival",metaDFDcol="death_from_disease",
                        plot=False,rounding=2):
@@ -84,3 +84,31 @@ def subsetsImpactSurvival(subsets,metadata,metacensorcol="overall_survival",
 
     if title: ax.set_title(title)
     return lastvalues
+
+# 2-way survival curves
+def twoGeneSurvivalPlot(g1,g2,expressionData,metadata,ax=None):
+    if not ax: f,ax = plt.subplots()
+    g1med = expressionData.ix[g1].median()
+    g2med = expressionData.ix[g2].median()
+    gHH = expressionData.columns[(expressionData.ix[g1]>g1med)&(expressionData.ix[g2]>g2med)] #High g1, high g2
+    gHL = expressionData.columns[(expressionData.ix[g1]>g1med)&(expressionData.ix[g2]<=g2med)]
+    gLH = expressionData.columns[(expressionData.ix[g1]<=g1med)&(expressionData.ix[g2]>g2med)]
+    gLL = expressionData.columns[(expressionData.ix[g1]<=g1med)&(expressionData.ix[g2]<=g2med)]
+    kmf = KaplanMeierFitter()
+    for g,a in zip((gHH,gHL,gLH,gLL),('HH','HL','LH','LL')):
+        kmf.fit(metadata.lastfollowup[metadata.index.isin(g)],
+                ~metadata.survived[metadata.index.isin(g)], label='{}[{}]'.format(a,len(g)))
+        kmf.plot(ax=ax)
+    ax.set_title('{} and {}'.format(g1,g2))    
+
+def twoGeneSurvivalPlots(expressionData,metadata,genes=('BRIP1','TK1','BIRC5','EME1','WNT3')):
+    from itertools import combinations, count
+    numberOfPlots = len(list(combinations(range(len(genes)),2)))
+    prows = int(np.ceil(numberOfPlots**0.5))
+    pcols = int(np.floor(numberOfPlots**0.5))
+    f,axes = plt.subplots(prows,pcols,sharex=True)
+    c = count(0)
+    for g1 in genes:
+        for g2 in genes[genes.index(g1)+1:]:
+            ax = axes.flatten()[next(c)]
+            twoGeneSurvivalPlot(g1,g2,expressionData=expressionData,metadata=metadata,ax=ax)
