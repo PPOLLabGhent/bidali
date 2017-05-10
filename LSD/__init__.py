@@ -19,8 +19,18 @@ def getLSDataset(name,**kwargs):
     except TypeError:
         return globals()[name](**kwargs)
 
-def listLSDatasets():
-    return [i for i in sorted(globals()) if i.startswith('get_')]
+def listLSDatasets(subpackages=True):
+    print(*[i for i in sorted(globals()) if i.startswith('get_')],sep='\n')
+    if subpackages:
+        print('\nWithin subpackages:')
+        import pkgutil as pk
+        from inspect import getmembers
+        for mod in pk.walk_packages(__path__,__name__+'.'):
+            if not mod.ispkg:
+                mol = pk.importlib.import_module(mod[1])
+                print('>',mod[1])
+                print(*[i for i in sorted(dict(getmembers(mol)))
+                        if i.startswith('get_')],sep='\n',end='\n\n')
 
 class Dataset:
     """

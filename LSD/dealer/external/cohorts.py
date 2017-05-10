@@ -1,8 +1,8 @@
-from LSD import storeDatasetLocally, datadir, get_lift19to38, get_ensemblGeneannot, Dataset
 from os.path import expanduser, exists
-import gzip
+import LSD, gzip
 import pandas as pd, numpy as np
 from itertools import count
+from LSD import storeDatasetLocally, datadir, Dataset
 
 @storeDatasetLocally
 def get_NRC(datadir=datadir+'NRC_data_AFW/'):
@@ -76,13 +76,13 @@ def get_FischerData():
     del geosearch
     aCGH['log2ratio'] = (aCGH.CN/2).apply(np.log2)
     #Convert coordinates to hg38
-    lo = get_lift19to38()
+    lo = LSD.get_lift19to38()
     aCGH['Start38'] = aCGH.T.apply(lambda x: lo.convert_coordinate(x.Chromosome,x.Start)).apply(lambda x: x[0][1] if x else np.nan)
     aCGH['End38'] = aCGH.T.apply(lambda x: lo.convert_coordinate(x.Chromosome,x.End)).apply(lambda x: x[0][1] if x else np.nan)
     del lo, aCGH['Start'], aCGH['End']
     aCGH = aCGH.dropna().copy()
     #Assign genes to regions
-    genannot = get_ensemblGeneannot()
+    genannot = LSD.get_ensemblGeneannot()
     aCGH['genes'] = aCGH.T.apply(lambda x: {f.attributes['gene_name'][0] for f in genannot.region('{}:{}-{}'
                                                     .format(x.Chromosome[3:],int(x.Start38),int(x.End38)),featuretype='gene')})
     aCGH['nrGenes'] = aCGH.genes.apply(len)
@@ -94,7 +94,7 @@ def get_FischerData():
     metadata = metadata[metadata.death_from_disease |
         (~metadata.death_from_disease &
         (metadata.overall_survival > filteredOn['minimalSurvivalLastFollowup']))]
-    exprdata = [metadata.index]
+    exprdata = exprdata[metadata.index]
     aCGH = aCGH[aCGH.Sample.isin(metadata.index)]
     
     return Dataset(**locals())
