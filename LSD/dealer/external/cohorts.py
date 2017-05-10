@@ -1,6 +1,7 @@
-from os.path import expanduser, exists
+#!/usr/bin/env python
 import LSD, gzip
 import pandas as pd, numpy as np
+from os.path import expanduser, exists
 from itertools import count
 from LSD import storeDatasetLocally, datadir, Dataset
 
