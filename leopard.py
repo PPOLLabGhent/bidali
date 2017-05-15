@@ -5,7 +5,7 @@ Module for Lab Speleman reporting
 from os.path import expanduser
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
-import pandas as pd
+import pandas as pd, re
 from itertools import count
 
 reportsDir = expanduser('~/Reports/')
@@ -14,13 +14,16 @@ class Report:
     """
     Contains as main attribute a list of sections.
     Defines methods of outputting the sections.
+    outfile should not include a final extension, as
+    that is determined by the different output methods.
     """
     def __init__(self,title,intro='',conclusion='',outfile=None):
+        import time
         self.sections = []
         self.title = title.strip()
         self.intro = intro.strip()
         self.conclusion = conclusion.strip()
-        self.outfile = outfile
+        self.outfile = outfile if outfile else reportsDir+time.strftime('%Y_%m_%d')
 
     def append(self,*args,toSection=None,**kwargs):
         """
@@ -48,10 +51,7 @@ class Report:
         Figs and tabs as pngs and excells.
         """
         from zipfile import ZipFile
-        import time
-        if not self.outfile:
-            self.outfile = reportsDir+time.strftime('%Y_%m_%d')+'.zip'
-        with ZipFile(self.outfile, 'w') as zipcontainer:
+        with ZipFile(self.outfile+'.zip', 'w') as zipcontainer:
             with zipcontainer.open('summary.txt',mode='w') as zipf:
                 zipf.write('# {}\n\n{}\n{}'.format(
                     self.title,
@@ -61,6 +61,20 @@ class Report:
             c = count(1)
             for section in self.sections:
                 section.sectionOutZip(zipcontainer,'s{}/'.format(next(c)))
+
+    def outputPDF(self):
+        """
+        Makes a pdf report with pylatex
+        """
+        import pylatex as pl
+        geometry_options = {"tmargin": "1cm", "lmargin": "1cm"}
+        doc = pl.Document(geometry_options=geometry_options)
+        c = count(0)
+        for section in self.sections:
+            with doc.create(pl.Section(section.title)):
+                doc.append(section.p)
+                section.subsectionsPDF((next(c),),doc=doc)
+        doc.generate_pdf(self.outfile,clean_tex=False)
 
 class Section:
     """
@@ -111,10 +125,10 @@ class Section:
         callback(section,walkTrace,*args,case='sectionmain',**kwargs)
         c = count(1)
         for f in section.figs:
-            callback(section,walkTrace,*args,case='fig',element=f,**kwargs)
+            callback(section,walkTrace,*args,case='figure',element=f,**kwargs)
         c = count(1)
         for t in section.tabs:
-            callback(section,walkTrace,*args,case='fig',element=t,**kwargs)
+            callback(section,walkTrace,*args,case='table',element=t,**kwargs)
         c = count(1)
         for s in section.subs:
             Section.sectionWalker(s,callback,walkTrace+(next(c),),*args,**kwargs)
@@ -126,13 +140,8 @@ class Section:
         return wrapper
 
     @walkerWrapper
-    def listContent(self,walkTrace,case=None):
+    def list(self,walkTrace,case=None,element=None):
         if case == 'sectionmain': print(walkTrace,self.title)   
-        
-    def list(self,walkTrace=()):
-        def listContent(self,walkTrace,case=None):
-            if case == 'sectionmain': print(walkTrace,self.title)
-        Section.sectionWalker(self,listContent,walkTrace)
 
     def sectionOutZip(self,zipcontainer,zipdir=''):
         from io import StringIO
@@ -152,6 +161,46 @@ class Section:
         c = count(1)
         for s in self.subs:
             s.sectionOutZip(zipcontainer,'{}s{}/'.format(zipdir,next(c)))
+
+    @walkerWrapper
+    def subsectionsPDF(self,walkTrace,case=None,element=None,doc=None):
+        import pylatex as pl
+        if case == 'sectionmain':
+            with doc.create(pl.Subsection(self.title) if len(walkTrace) <=2
+                            else pl.Subsubsection(self.title)):
+                if r'\ref' not in self.p: doc.append(self.p)
+                else:
+                    figrefs = re.compile(r'\\ref\{figref\d+\}')
+                    lastpos = 0
+                    for fr in figrefs.finditer(self.p):
+                        doc.append(self.p[lastpos:fr.start()])
+                        doc.append(pl.utils.NoEscape(self.p[fr.start():fr.end()]))
+                        lastpos = fr.end()
+                    doc.append(self.p[lastpos:])
+                
+        if case == 'figure':
+            width = r'1\textwidth'
+            fig = element
+            #if fig._suptitle: fig.suptitle('Figure {}: {}'.format(fig.number,fig._suptitle.get_text()))
+            figtitle = fig._suptitle.get_text() if fig._suptitle else ''
+            fig.suptitle('')
+            with doc.create(pl.Figure(position='htbp')) as plot:
+                plt.figure(fig.number)
+                plot.add_plot(width=pl.NoEscape(width))
+                plot.add_caption(figtitle)
+                plot.append(pl.utils.NoEscape(r'\label{figref'+str(fig.number)+r'}'))
+            fig.suptitle(figtitle if figtitle else None)
+            
+        if case == 'table':
+            t = element
+            with doc.create(pl.Tabular('r|'+'l'*len(t.columns))) as table:
+                table.add_hline()
+                table.add_row(('',)+tuple(t.columns))
+                for row in t.to_records():
+                    table.add_row(row)
+                table.add_hline(1)
+                #table.add_empty_row()
+                #table.add_caption(str(walkTrace))
 
 # Helper functions
 def makeFigFromFile(filename,*args,**kwargs):
