@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 import pandas as pd, re
 from itertools import count
+from collections import OrderedDict
 
 reportsDir = expanduser('~/Reports/')
 
@@ -17,13 +18,14 @@ class Report:
     outfile should not include a final extension, as
     that is determined by the different output methods.
     """
-    def __init__(self,title,intro='',conclusion='',outfile=None):
+    def __init__(self,title,intro='',conclusion='',outname='',outfile=None):
         import time
         self.sections = []
         self.title = title.strip()
         self.intro = intro.strip()
         self.conclusion = conclusion.strip()
-        self.outfile = outfile if outfile else reportsDir+time.strftime('%Y_%m_%d')
+        self.outfile = outfile if outfile else '{}{}{}'.format(reportsDir,time.strftime('%Y_%m_%d'),
+                                                               '_'+outname if outname else '')
 
     def append(self,*args,toSection=None,**kwargs):
         """
@@ -31,8 +33,9 @@ class Report:
         Else if toSection is int or (int,int,...), it gets added to the subs (subsection)
         list of the specified section.
 
-        *args and **kwargs are processed by Section class.
-        See Section docs for supported arguments.
+        *args and **kwargs are processed by Section class:
+          title, text, figures=None, tables=None, subsections=None
+          see Section docs for further info
         """
         section = Section(*args,**kwargs)
         if toSection:
@@ -40,6 +43,13 @@ class Report:
             self.sections[toSection[0]].append_subsection(section,toSection[1:])
         else:
             self.sections.append(section)
+            self.lastSection = section
+
+    def appendToLastSection(self,*args,**kwargs):
+        """
+        Make subsection and append to last appended section
+        """
+        self.append(*args,toSection=-1,**kwargs)
 
     def list(self):
         for i in range(len(self.sections)):
@@ -89,8 +99,8 @@ class Section:
                  subsections=None):
         self.title = title.strip()
         self.p = text.strip()
-        self.figs = figures if figures else []
-        self.tabs = tables if tables else []
+        self.figs = OrderedDict(figures) if figures else OrderedDict()
+        self.tabs = OrderedDict(tables) if tables else OrderedDict()
         self.subs = subsections if subsections else []
         self.checkValidity()
 
@@ -114,6 +124,7 @@ class Section:
             self.subs[toSection[0]].append_subsection(section,toSection=toSection[1:])
         else:
             self.subs.append(section)
+            self.lastSubSection = section
 
     @staticmethod
     def sectionWalker(section,callback,walkTrace,*args,**kwargs):
@@ -124,10 +135,10 @@ class Section:
         """
         callback(section,walkTrace,*args,case='sectionmain',**kwargs)
         c = count(1)
-        for f in section.figs:
+        for f in section.figs.items():
             callback(section,walkTrace,*args,case='figure',element=f,**kwargs)
         c = count(1)
-        for t in section.tabs:
+        for t in section.tabs.items():
             callback(section,walkTrace,*args,case='table',element=t,**kwargs)
         c = count(1)
         for s in section.subs:
@@ -148,11 +159,11 @@ class Section:
         with zipcontainer.open(zipdir+'section.txt',mode='w') as zipf:
             zipf.write('# {}\n{}'.format(self.title,self.p).encode())
         c = count(1)
-        for f in self.figs:
+        for f in self.figs.values(): #TODO adapt to items
             with zipcontainer.open(zipdir+'fig{}.png'.format(next(c)),mode='w') as zipf:
                 f.savefig(zipf)
         c = count(1)
-        for t in self.tabs:
+        for t in self.tabs.values(): #TODO adapt to items
             with zipcontainer.open(zipdir+'table{}.csv'.format(next(c)),mode='w') as zipf:
                 b = StringIO()
                 t.to_csv(b,sep=';',decimal=',')
@@ -180,27 +191,29 @@ class Section:
                 
         if case == 'figure':
             width = r'1\textwidth'
-            fig = element
+            figtitle,fig = element
             #if fig._suptitle: fig.suptitle('Figure {}: {}'.format(fig.number,fig._suptitle.get_text()))
-            figtitle = fig._suptitle.get_text() if fig._suptitle else ''
-            fig.suptitle('')
+            #figtitle = fig._suptitle.get_text() if fig._suptitle else ''
+            #fig.suptitle('')
             with doc.create(pl.Figure(position='htbp')) as plot:
                 plt.figure(fig.number)
                 plot.add_plot(width=pl.NoEscape(width))
                 plot.add_caption(figtitle)
                 plot.append(pl.utils.NoEscape(r'\label{figref'+str(fig.number)+r'}'))
-            fig.suptitle(figtitle if figtitle else None)
+            #fig.suptitle(figtitle if figtitle else None)
             
         if case == 'table':
-            t = element
-            with doc.create(pl.Tabular('r|'+'l'*len(t.columns))) as table:
-                table.add_hline()
-                table.add_row(('',)+tuple(t.columns))
-                for row in t.to_records():
-                    table.add_row(row)
-                table.add_hline(1)
-                #table.add_empty_row()
-                #table.add_caption(str(walkTrace))
+            caption,t = element
+            t = pdSeriesToFrame(t) if type(t) == pd.Series else t
+            with doc.create(pl.Table(position='h')) as tablenv:
+                tablenv.add_caption(caption)
+                with doc.create(pl.Tabular('r|'+'l'*len(t.columns))) as table:
+                    table.add_hline()
+                    table.add_row(('',)+tuple(t.columns))
+                    for row in t.to_records():
+                        table.add_row(row)
+                    table.add_hline(1)
+                    #table.add_empty_row()
 
 # Helper functions
 def makeFigFromFile(filename,*args,**kwargs):
@@ -213,3 +226,7 @@ def makeFigFromFile(filename,*args,**kwargs):
     ax.axis('off')
     ax.imshow(img)
     return fig
+
+def pdSeriesToFrame(pdseries,colname='value'):
+    "Returns a series as a pd dataframe"
+    return pd.DataFrame(pdseries,columns=[colname])

@@ -23,6 +23,8 @@ def get_NRC(datadir=datadir+'NRC_data_AFW/'):
     aCGH.index = aCGH.pop('#H:hugo')
     return Dataset(**locals())
 
+#TODO: FischerData needs to be transformed to use the RNA seq counts in GSE62564
+
 @storeDatasetLocally
 def get_FischerData():
     filteredOn = { #For reference, to know how dataset has been filtered
