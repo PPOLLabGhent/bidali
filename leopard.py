@@ -18,7 +18,7 @@ class Report:
     outfile should not include a final extension, as
     that is determined by the different output methods.
     """
-    def __init__(self,title,intro='',conclusion='',outname='',outfile=None):
+    def __init__(self,title,intro='',conclusion='',outname='',outfile=None,author=None):
         import time
         self.sections = []
         self.title = title.strip()
@@ -26,6 +26,7 @@ class Report:
         self.conclusion = conclusion.strip()
         self.outfile = outfile if outfile else '{}{}{}'.format(reportsDir,time.strftime('%Y_%m_%d'),
                                                                '_'+outname if outname else '')
+        self.author = author
 
     def append(self,*args,toSection=None,**kwargs):
         """
@@ -72,19 +73,40 @@ class Report:
             for section in self.sections:
                 section.sectionOutZip(zipcontainer,'s{}/'.format(next(c)))
 
-    def outputPDF(self):
+    def outputPDF(self,**kwargs):
         """
         Makes a pdf report with pylatex
+        **kwargs are send to doc.generate_pdf 
+        -> see pylatex.Document.generate_pdf for help
         """
         import pylatex as pl
-        geometry_options = {"tmargin": "1cm", "lmargin": "1cm"}
+        geometry_options = {"tmargin": "2cm", "lmargin": "2cm"}
         doc = pl.Document(geometry_options=geometry_options)
+        #Following option avoids float error when to many unplaced figs or tabs
+        # (to force placing floats also \clearpage can be used after a section for example)
+        doc.append(pl.utils.NoEscape(r'\extrafloats{100}'))
+        doc.append(pl.utils.NoEscape(r'\title{'+self.title+'}'))
+        doc.append(pl.utils.NoEscape(r'\date{\today}'))
+        if self.author: doc.append(pl.utils.NoEscape(r'\author{'+self.author+'}'))
+        doc.append(pl.utils.NoEscape(r'\maketitle'))
+
+        # Append introduction
+        if self.intro:
+            with doc.create(pl.Section('Introduction')):
+                doc.append(self.intro)
+
+        # Sections
         c = count(0)
         for section in self.sections:
-            with doc.create(pl.Section(section.title)):
-                doc.append(section.p)
-                section.subsectionsPDF((next(c),),doc=doc)
-        doc.generate_pdf(self.outfile,clean_tex=False)
+            section.sectionsPDF((next(c),),doc=doc)
+
+        # Append conclusion
+        if self.conclusion:
+            with doc.create(pl.Section('Conclusion')):
+                doc.append(self.conclusion)
+
+        # Generate pdf
+        doc.generate_pdf(self.outfile,**kwargs)
 
 class Section:
     """
@@ -92,16 +114,22 @@ class Section:
     Defines methods dealing with the structure of
     sections, and section specific output.
 
+    tablehead => set to integer to only show DataFrame.head(tablehead) rows
+    in this section
+
     For adding subsections, a method is provided.
     """
     def __init__(self,title,text,
-                 figures=None,tables=None,
-                 subsections=None):
+                 figures=None,tables=None,subsections=None,
+                 tablehead=None,tablecolumns=None,clearpage=False):
         self.title = title.strip()
         self.p = text.strip()
         self.figs = OrderedDict(figures) if figures else OrderedDict()
         self.tabs = OrderedDict(tables) if tables else OrderedDict()
         self.subs = subsections if subsections else []
+        self.settings = {'tablehead':tablehead,
+                         'tablecolumns':tablecolumns,
+                         'clearpage':clearpage}
         self.checkValidity()
 
     def checkValidity(self):
@@ -174,14 +202,17 @@ class Section:
             s.sectionOutZip(zipcontainer,'{}s{}/'.format(zipdir,next(c)))
 
     @walkerWrapper
-    def subsectionsPDF(self,walkTrace,case=None,element=None,doc=None):
+    def sectionsPDF(self,walkTrace,case=None,element=None,doc=None):
         import pylatex as pl
         if case == 'sectionmain':
-            with doc.create(pl.Subsection(self.title) if len(walkTrace) <=2
-                            else pl.Subsubsection(self.title)):
+            if self.settings['clearpage']: doc.append(pl.utils.NoEscape(r'\clearpage'))
+            with doc.create(pl.Section(self.title) if len(walkTrace) == 1 else
+                            pl.Subsection(self.title) if len(walkTrace) == 2 else
+                            pl.Subsubsection(self.title)):
                 if r'\ref' not in self.p: doc.append(self.p)
                 else:
                     figrefs = re.compile(r'\\ref\{figref\d+\}')
+                    #latexcode = re.compile(r'&@\\.+')
                     lastpos = 0
                     for fr in figrefs.finditer(self.p):
                         doc.append(self.p[lastpos:fr.start()])
@@ -205,7 +236,11 @@ class Section:
         if case == 'table':
             caption,t = element
             t = pdSeriesToFrame(t) if type(t) == pd.Series else t
-            with doc.create(pl.Table(position='h')) as tablenv:
+            if self.settings['tablehead']:
+                t = t.head(self.settings['tablehead'])
+            if self.settings['tablecolumns']:
+                t = t[self.settings['tablecolumns']]
+            with doc.create(pl.Table(position='ht')) as tablenv:
                 tablenv.add_caption(caption)
                 with doc.create(pl.Tabular('r|'+'l'*len(t.columns))) as table:
                     table.add_hline()
