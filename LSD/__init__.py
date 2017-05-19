@@ -287,4 +287,31 @@ Y      Y  10316945   10544039"""
 
     return centromereshg38
 
+#Implement here to retrieve MSigDB
+# #+BEGIN_SRC sh
+   #   wget -O /home/christophe/Data/Genomes/MSigDB/msigdb_v5.2.xml \
+   #        'http://software.broadinstitute.org/gsea/msigdb/download_file.jsp?filePath=/resources/msigdb/5.2/msigdb_v5.2.xml'
+   # #+END_SRC
+   # #+BEGIN_SRC python
+   #   import xml.etree.ElementTree as ET
+   #   import pickle
+
+   #   parser = ET.parse('/home/christophe/Data/Genomes/MSigDB/msigdb_v5.2.xml')
+   #   root = parser.getroot()
+   #   genesetsCollections = {} 
+   #   for geneset in root:
+   #       if (geneset.attrib['CATEGORY_CODE'] == 'ARCHIVED' or
+   #           geneset.attrib['ORGANISM'] != 'Homo sapiens'): continue
+   #       try:
+   #           genesetsCollections[geneset.attrib['CATEGORY_CODE']
+   #           ][geneset.attrib['STANDARD_NAME']] = geneset.attrib['MEMBERS_SYMBOLIZED'].split(',')
+   #       except KeyError as e:
+   #           genesetsCollections[geneset.attrib['CATEGORY_CODE']] = {}
+   #           genesetsCollections[geneset.attrib['CATEGORY_CODE']
+   #           ][geneset.attrib['STANDARD_NAME']] = geneset.attrib['MEMBERS_SYMBOLIZED'].split(',')
+   #   genesetsCollections = {'version':'5.2','MSigDB':genesetsCollections}        
+   #   pickle.dump(genesetsCollections,open('/home/christophe/Data/Genomes/MSigDB/msigdb.pickle','bw'))
+   # #+END_SRC
+
+
 ### Cohorts
