@@ -287,6 +287,11 @@ Y      Y  10316945   10544039"""
 
     return centromereshg38
 
+def get_msigdb():
+    genesetsCollections = pickle.load(open('/home/christophe/Data/Genomes/MSigDB/msigdb.pickle','rb'))
+    print('MSigDB {}'.format(genesetsCollections['version']))
+    mdb = genesetsCollections['MSigDB']
+    return mdb
 #Implement here to retrieve MSigDB
 # #+BEGIN_SRC sh
    #   wget -O /home/christophe/Data/Genomes/MSigDB/msigdb_v5.2.xml \

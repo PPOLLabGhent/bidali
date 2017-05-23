@@ -18,7 +18,7 @@ class Report:
     outfile should not include a final extension, as
     that is determined by the different output methods.
     """
-    def __init__(self,title,intro='',conclusion='',outname='',outfile=None,author=None):
+    def __init__(self,title,intro='',conclusion='',outname='',outfile=None,author=None,addTime=True):
         import time
         self.sections = []
         self.title = title.strip()
@@ -85,8 +85,10 @@ class Report:
         #Following option avoids float error when to many unplaced figs or tabs
         # (to force placing floats also \clearpage can be used after a section for example)
         doc.append(pl.utils.NoEscape(r'\extrafloats{100}'))
+        if self.addTime: doc.append(pl.package.Package('datetime'))
         doc.append(pl.utils.NoEscape(r'\title{'+self.title+'}'))
-        doc.append(pl.utils.NoEscape(r'\date{\today}'))
+        if self.addTime: doc.append(pl.utils.NoEscape(r'\date{\currenttime}'))
+        else: doc.append(pl.utils.NoEscape(r'\date{\today}'))
         if self.author: doc.append(pl.utils.NoEscape(r'\author{'+self.author+'}'))
         doc.append(pl.utils.NoEscape(r'\maketitle'))
 
@@ -129,7 +131,8 @@ class Section:
         self.subs = subsections if subsections else []
         self.settings = {'tablehead':tablehead,
                          'tablecolumns':tablecolumns,
-                         'clearpage':clearpage}
+                         'clearpage':clearpage,
+                         'doubleslashnewline':True}
         self.checkValidity()
 
     def checkValidity(self):
@@ -185,7 +188,8 @@ class Section:
     def sectionOutZip(self,zipcontainer,zipdir=''):
         from io import StringIO
         with zipcontainer.open(zipdir+'section.txt',mode='w') as zipf:
-            zipf.write('# {}\n{}'.format(self.title,self.p).encode())
+            text = self.p if not self.settings['doubleslashnewline'] else self.p.replace('//','\n')
+            zipf.write('# {}\n{}'.format(self.title,text).encode())
         c = count(1)
         for f in self.figs.values(): #TODO adapt to items
             with zipcontainer.open(zipdir+'fig{}.png'.format(next(c)),mode='w') as zipf:
@@ -209,16 +213,18 @@ class Section:
             with doc.create(pl.Section(self.title) if len(walkTrace) == 1 else
                             pl.Subsection(self.title) if len(walkTrace) == 2 else
                             pl.Subsubsection(self.title)):
-                if r'\ref' not in self.p: doc.append(self.p)
+                text = (self.p.replace('\n',' ').replace('//','\n')
+                        if self.settings['doubleslashnewline'] else self.p)
+                if r'\ref' not in text: doc.append(text)
                 else:
                     figrefs = re.compile(r'\\ref\{figref\d+\}')
                     #latexcode = re.compile(r'&@\\.+')
                     lastpos = 0
-                    for fr in figrefs.finditer(self.p):
-                        doc.append(self.p[lastpos:fr.start()])
-                        doc.append(pl.utils.NoEscape(self.p[fr.start():fr.end()]))
+                    for fr in figrefs.finditer(text):
+                        doc.append(text[lastpos:fr.start()])
+                        doc.append(pl.utils.NoEscape(text[fr.start():fr.end()]))
                         lastpos = fr.end()
-                    doc.append(self.p[lastpos:])
+                    doc.append(text[lastpos:])
                 
         if case == 'figure':
             width = r'1\textwidth'
