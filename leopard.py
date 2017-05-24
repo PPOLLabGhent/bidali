@@ -27,6 +27,7 @@ class Report:
         self.outfile = outfile if outfile else '{}{}{}'.format(reportsDir,time.strftime('%Y_%m_%d'),
                                                                '_'+outname if outname else '')
         self.author = author
+        self.addTime = addTime
 
     def append(self,*args,toSection=None,**kwargs):
         """
@@ -56,7 +57,7 @@ class Report:
         for i in range(len(self.sections)):
             self.sections[i].list(walkTrace=(i,))
         
-    def outputZip(self):
+    def outputZip(self,figtype='png'):
         """
         Outputs the report in a zip container.
         Figs and tabs as pngs and excells.
@@ -71,7 +72,7 @@ class Report:
                 ).encode())
             c = count(1)
             for section in self.sections:
-                section.sectionOutZip(zipcontainer,'s{}/'.format(next(c)))
+                section.sectionOutZip(zipcontainer,'s{}/'.format(next(c)),figtype=figtype)
 
     def outputPDF(self,**kwargs):
         """
@@ -85,9 +86,10 @@ class Report:
         #Following option avoids float error when to many unplaced figs or tabs
         # (to force placing floats also \clearpage can be used after a section for example)
         doc.append(pl.utils.NoEscape(r'\extrafloats{100}'))
-        if self.addTime: doc.append(pl.package.Package('datetime'))
         doc.append(pl.utils.NoEscape(r'\title{'+self.title+'}'))
-        if self.addTime: doc.append(pl.utils.NoEscape(r'\date{\currenttime}'))
+        if self.addTime:
+            from time import localtime, strftime
+            doc.append(pl.utils.NoEscape(r'\date{'+strftime("%Y-%m-%d %H:%M:%S", localtime())+r'}'))
         else: doc.append(pl.utils.NoEscape(r'\date{\today}'))
         if self.author: doc.append(pl.utils.NoEscape(r'\author{'+self.author+'}'))
         doc.append(pl.utils.NoEscape(r'\maketitle'))
@@ -185,15 +187,15 @@ class Section:
     def list(self,walkTrace,case=None,element=None):
         if case == 'sectionmain': print(walkTrace,self.title)   
 
-    def sectionOutZip(self,zipcontainer,zipdir=''):
+    def sectionOutZip(self,zipcontainer,zipdir='',figtype='png'):
         from io import StringIO
         with zipcontainer.open(zipdir+'section.txt',mode='w') as zipf:
             text = self.p if not self.settings['doubleslashnewline'] else self.p.replace('//','\n')
             zipf.write('# {}\n{}'.format(self.title,text).encode())
         c = count(1)
         for f in self.figs.values(): #TODO adapt to items
-            with zipcontainer.open(zipdir+'fig{}.png'.format(next(c)),mode='w') as zipf:
-                f.savefig(zipf)
+            with zipcontainer.open(zipdir+'fig{}.{}'.format(next(c),figtype),mode='w') as zipf:
+                f.savefig(zipf,format=figtype)
         c = count(1)
         for t in self.tabs.values(): #TODO adapt to items
             with zipcontainer.open(zipdir+'table{}.csv'.format(next(c)),mode='w') as zipf:
@@ -203,7 +205,7 @@ class Section:
                 zipf.write(b.read().encode())
         c = count(1)
         for s in self.subs:
-            s.sectionOutZip(zipcontainer,'{}s{}/'.format(zipdir,next(c)))
+            s.sectionOutZip(zipcontainer,'{}s{}/'.format(zipdir,next(c)),figtype=figtype)
 
     @walkerWrapper
     def sectionsPDF(self,walkTrace,case=None,element=None,doc=None):
