@@ -195,7 +195,7 @@ class Section:
         c = count(1)
         for f in self.figs.values(): #TODO adapt to items
             with zipcontainer.open(zipdir+'fig{}.{}'.format(next(c),figtype),mode='w') as zipf:
-                f.savefig(zipf,format=figtype)
+                f.savefig(zipf,format=figtype,transparent=True)
         c = count(1)
         for t in self.tabs.values(): #TODO adapt to items
             with zipcontainer.open(zipdir+'table{}.csv'.format(next(c)),mode='w') as zipf:
