@@ -68,7 +68,7 @@ def enrichometer(ranks,genesUp,genesDown=None,universe=None,fexact_H1='two-sided
 
     if universe:
         if type(universe) is list: raise NotImplemented
-        odds,pval = fisher_exact([[overlap,len(ranks)],[len(genesUp),universe]],alternative=fexact_H1)
+        odds,pval = fisher_exact([[overlap,len(ranks)],[len(genesUp)-overlap,universe]],alternative=fexact_H1)
         ax.annotate('{}\n{:.3g}'.format(len(genesUp),pval),(0,eventoffset),
                     ha='center',va='center',rotation=textrotation,size=fontsize)
         
