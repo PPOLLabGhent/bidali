@@ -7,7 +7,7 @@ setup(name = 'lospy',
       author = 'Christophe Van Neste',
       author_email = 'christophe.vanneste@ugent.be',
       license = 'MIT',
-      packages = ['lospy'],
+      packages = ['lospy','LSD'],
       install_requires = [
           'pylatex',
       ],
