@@ -9,9 +9,12 @@ setup(name = 'lospy',
       license = 'MIT',
       packages = ['lospy','LSD'],
       install_requires = [
-          'pylatex',
+          'gseapy',
       ],
       zip_safe = False,
+      #entry_points = {
+      #    'console_scripts': ['getLSDataset=LSD.command_line:main'],
+      #},
       test_suite = 'nose.collector',
       tests_require = ['nose']
 )

@@ -12,14 +12,17 @@ from LSD import get_centromeres
 centromereshg38 = get_centromeres()
 
 def enrichometer(ranks,genesUp,genesDown=None,universe=None,fexact_H1='two-sided',
-                 reservoirR1=1.4,reservoirR2=None,ax=None,title=None,
-                 invertx=False,textrotation=0,fontsize=12,**kwargs):
+                 reservoirR1=1.4,reservoirR2=None,fillingLinewidths=False,ax=None,title=None,
+                 feminpv=.05,invertx=False,textrotation=0,fontsize=12,**kwargs):
     """
     ranks -> pd.Series with ranked statistic
     if genesDown, is not provided, considered as unitary geneset
     universe -> int or list
      int that is the total number of genes in the universe
      or list with all genes in the universe 
+    feminpv -> plot where enrichment is the strongest
+     provide as float, if fisher enrichment at strongest is not
+     significant in respect to value provided nothing is plotted
     """
     #enrichometer settings
     axiscale = 10
@@ -36,8 +39,12 @@ def enrichometer(ranks,genesUp,genesDown=None,universe=None,fexact_H1='two-sided
         fig,ax = plt.subplots(figsize=(8,2))
     else: fig = ax.get_figure()
     ax.axis('off')
+    if fillingLinewidths:
+        raise NotImplemented #todo use rectangle patches, does not work with linewidths
+        axPixels = ax.transData.transform([(0,1),(1,0)])-ax.transData.transform((0,0))
+        linewidths = (axPixels[1,0]/fig.dpi)*axiscale/len(ranks)
     settings = {
-        'colors':'r'
+        'colors':'r',
         }
     settings.update(kwargs)
 
@@ -71,6 +78,20 @@ def enrichometer(ranks,genesUp,genesDown=None,universe=None,fexact_H1='two-sided
         odds,pval = fisher_exact([[overlap,len(ranks)],[len(genesUp)-overlap,universe]],alternative=fexact_H1)
         ax.annotate('{}\n{:.3g}'.format(len(genesUp),pval),(0,eventoffset),
                     ha='center',va='center',rotation=textrotation,size=fontsize)
+
+    if feminpv:
+        fenrichscores = fenrichmentscore(ranks,genesUp)
+        pvmin = fenrichscores.pvalue.min()
+        if pvmin <= feminpv:
+            leadingEdgeGene = fenrichscores[fenrichscores.pvalue==pvmin].first_valid_index()
+            #ax.eventplot((normalized.ix[leadingEdgeGene],),lineoffsets=eventoffset,linelengths=eventlen,
+            #             color='g')
+            ax.add_patch(ptch.Rectangle((-axiscale-reservoirR1,eventoffset-eventlen/2),
+                                        normalized.ix[leadingEdgeGene]+axiscale+reservoirR1,
+                                        eventlen,facecolor='r',alpha=.4))
+            ax.annotate('{:.3g}'.format(pvmin),(normalized.ix[leadingEdgeGene]+padding,eventoffset),
+                        ha='left',va='center',size=fontsize)
+        else: leadingEdgeGene = None
         
     if title:
         #ax.set_title(title)
@@ -79,4 +100,21 @@ def enrichometer(ranks,genesUp,genesDown=None,universe=None,fexact_H1='two-sided
 
     if invertx: ax.invert_xaxis()
     
-    return fig
+    return (fig,leadingEdgeGene) if feminpv else fig
+
+def fenrichmentscore(ranks,genesUp,genesDown=None):
+    """
+    Calculate fe score for each position in the ranked list
+    """
+    genes = {g for g in genesUp if g in ranks.index}
+    ranks = ranks.sort_values()
+    fescores = []
+    for i in range(1,len(ranks)):
+        genesUpto,genesAfter = set(ranks.index[:i]),set(ranks.index[i:])
+        fescores.append(
+            fisher_exact([[len(genesUpto&genes),len(genesUpto-genes)],
+                          [len(genesAfter&genes),len(genesAfter-genes)]],
+                         alternative='greater')
+        )
+        
+    return pd.DataFrame(fescores,columns=['oddratio','pvalue'],index=ranks.index[:-1])
