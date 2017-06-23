@@ -25,7 +25,7 @@ class test_fegnome(TestCase):
 
     def test_enrichometer(self):
         fig = enrichometer(ranks=self.ranks,genesUp=self.genesUp,genesDown=None)
-        plt.show()
+        #plt.show()
 
     def test_fenrichmentscore(self):
         fenrichscores = fenrichmentscore(ranks=self.ranks,genesUp=self.genesUp,genesDown=None)
