@@ -21,7 +21,10 @@ def geneImpactSurvival(gene,expressions,metadata,groupingByQuantile=0.5,grouping
     
     kmf.fit(metadata[metacensorcol][~groupHigh], metadata[metaDFDcol][~groupHigh], label='low')
     lastlow = float(kmf.survival_function_.ix[kmf.survival_function_.last_valid_index()])
-    if plot: ax = kmf.plot()
+    if plot:
+        if type(plot) is bool:
+            ax = kmf.plot()
+        else: ax = kmf.plot(ax=plot)
 
     kmf.fit(metadata[metacensorcol][groupHigh], metadata[metaDFDcol][groupHigh], label='high')
     lasthigh = float(kmf.survival_function_.ix[kmf.survival_function_.last_valid_index()])
@@ -31,9 +34,11 @@ def geneImpactSurvival(gene,expressions,metadata,groupingByQuantile=0.5,grouping
                            metadata[metaDFDcol][groupHigh], metadata[metaDFDcol][~groupHigh], alpha=.99)
     #results.print_summary()
     if not rounding:
-        return (lastlow-lasthigh,results.p_value)
+        result = (lastlow-lasthigh,results.p_value)
     else:
-        return (round(lastlow-lasthigh,rounding),round(results.p_value,rounding))
+        result = (round(lastlow-lasthigh,rounding),round(results.p_value,rounding))
+    if plot: return result,ax
+    else: return result
 
 def geneCombinationImpactSurvival(genes,expressions,metadata,groupingByQuantile=0.5,
                        metacensorcol="overall_survival",metaDFDcol="death_from_disease",

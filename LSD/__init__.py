@@ -119,12 +119,28 @@ def storeDatasetLocally(dataset_getfunction):
     Should only be used for functions that do not process the data
     differently depending on the 'get_dataset' function arguments.
     """
-    import inspect, hashlib
+    import inspect, hashlib, re
+    dependency = re.compile(r'\W*Dependenc(y|ies): (.+)')
     
     def wrapper(*args, **kwargs):
-        #Check if data was already processed
-        functionSource = inspect.getsource(dataset_getfunction)
-        hashvalue = hashlib.md5(functionSource.encode()).hexdigest()
+        # Check if data was already processed
+        ## Prepare hash
+        functionSource = inspect.getsource(dataset_getfunction).encode()
+        ### Check if dependencies
+        docstr = inspect.getdoc(dataset_getfunction)
+        if docstr:
+            dependencies = [e for d in (d.groups()[1].split()
+                                        for d in (dependency.search(l)
+                                                  for l in docstr.split('\n')) if d)
+                            for e in d]
+            for d in dependencies:
+                d = d.split('.')
+                d = getattr(globals()[d[0]],d[-1],globals()[d[0]]) #hack to get d with globals and getattr
+                try:
+                    functionSource+=inspect.getsource(d).encode()
+                except TypeError:
+                    functionSource+=pickle.dumps(d)
+        hashvalue = hashlib.md5(functionSource).hexdigest()
         datastorage = '{}{}_{}.pickle'.format(processedDataStorage,
                                               dataset_getfunction.__name__.replace('get_',''),
                                               hashvalue)
