@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import matplotlib.pyplot as plt
 import matplotlib.patches as ptch
+import numpy as np
 import networkx as nx
 from inspect import getmembers
 
@@ -64,3 +65,50 @@ def drawCNAcircos(cnaPositions,cnaTotal=False,chrRange=None,sortPositions=True,
     ax.set_xlim((-r,r))
     ax.set_ylim((-r,r))
     return fig
+
+def curvedHeatPlot(dataframe,columns,topDisplayed=10,cellwidth=.2,cellheight=.1,cmap='hot_r',
+                   headingTextSize=14,curveLabels=True,filename=None):
+    from itertools import count
+    cmap = plt.get_cmap(cmap)
+    topDisplayed_l_pos,topDisplayed_r_pos = topDisplayed,len(dataframe)-topDisplayed
+    def curvedHeat(x,iterposition,ax,columns=columns):
+        position = next(iterposition)
+        if position < topDisplayed_l_pos:
+            for c in columns:
+                ax.add_patch(ptch.Rectangle((-1+cellwidth*columns.index(c),(topDisplayed_l_pos - position - 1)*cellheight),
+                                            width=cellwidth,height=cellheight,color=cmap(x[c])))
+                if position == 0:
+                    ax.annotate('{:.2f}'.format(x[c]),
+                                (-1+cellwidth*columns.index(c)+cellwidth/2,((topDisplayed_l_pos - position - 1)*cellheight)+.05),
+                                ha='center',va='center')
+            ax.annotate(x.name,(-1,((topDisplayed_l_pos - position - 1)*cellheight)+.05),ha='right',va='center')
+        elif position >= topDisplayed_r_pos:
+            for c in columns:
+                ax.add_patch(ptch.Rectangle((1-cellwidth-(cellwidth*columns.index(c)),(position-topDisplayed_r_pos)*cellheight),
+                                            width=cellwidth,height=cellheight,color=cmap(x[c])))
+                if position == 57:
+                    ax.annotate('{:.2f}'.format(x[c]),
+                                (1-cellwidth*columns.index(c)-cellwidth/2,((position-topDisplayed_r_pos)*cellheight)+.05),
+                                ha='center',va='center')
+            ax.annotate(x.name,(1,((position-topDisplayed_r_pos)*cellheight)+.05),ha='left',va='center')
+        else:
+            startAngle = 180+(180*(position - topDisplayed)/(topDisplayed_r_pos - topDisplayed))
+            endAngle = 180+(180*(1+position - topDisplayed)/(topDisplayed_r_pos - topDisplayed))
+            for c in columns:
+                ax.add_patch(ptch.Wedge((0,0),1-(cellwidth*columns.index(c)),startAngle,endAngle,cellwidth,color=cmap(x[c])))
+            if curveLabels: ax.annotate(x.name,(np.pi*(startAngle+endAngle)/360,1),xycoords='polar',
+                                        ha='right' if position < len(dataframe)/2 else 'left',va='top',
+                                        rotation=(startAngle+endAngle)/2 + (180 if position < len(dataframe)/2 else 0))
+    figheatmap,ax = plt.subplots(figsize=(6,4))
+    ax.set_xlim((-1.2,1.2))
+    ax.set_ylim((-1.2,(topDisplayed+2)*cellheight))
+    for c in columns:
+        ax.annotate(c,(-1+cellwidth*columns.index(c)+cellwidth/2,topDisplayed*cellheight+.05),ha='center',size=headingTextSize)
+        ax.annotate(c,(1-cellwidth*columns.index(c)-cellwidth/2,topDisplayed*cellheight+.05),ha='center',size=headingTextSize)
+
+    ax.axis('off')
+    c = count(0)
+    dataframe.T.apply(curvedHeat,args=(c,ax))
+    
+    if filename: figheatmap.savefig(filename,transparent=True)
+    return figheatmap
