@@ -4,6 +4,7 @@ import matplotlib.patches as ptch
 import numpy as np
 import networkx as nx
 from inspect import getmembers
+from unittest.mock import Mock
 
 def drawGeneEnvNetwork(gene,interactome='string',addNeighborEdges=True,node_color='r',layout='random_layout'):
     """
@@ -68,6 +69,10 @@ def drawCNAcircos(cnaPositions,cnaTotal=False,chrRange=None,sortPositions=True,
 
 def curvedHeatPlot(dataframe,columns,topDisplayed=10,cellwidth=.2,cellheight=.1,cmap='hot_r',
                    headingTextSize=14,curveLabels=True,filename=None):
+    """
+    >>> curvedHeatPlot(Mock(),['col1','col2') #+doctest: ellipsis
+    <matplotlib.figure.Figure at ...>
+    """
     from itertools import count
     cmap = plt.get_cmap(cmap)
     topDisplayed_l_pos,topDisplayed_r_pos = topDisplayed,len(dataframe)-topDisplayed
