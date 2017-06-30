@@ -4,7 +4,7 @@ import matplotlib.patches as ptch
 import numpy as np
 import networkx as nx
 from inspect import getmembers
-from unittest.mock import Mock
+from unittest.mock import MagicMock as Mock
 
 def drawGeneEnvNetwork(gene,interactome='string',addNeighborEdges=True,node_color='r',layout='random_layout'):
     """
@@ -38,7 +38,8 @@ def drawCNAcircos(cnaPositions,cnaTotal=False,chrRange=None,sortPositions=True,
 
     Example BRIP1 on 17q
     >>> drawCNAcircos([(36094885,83084062),(59577514,83084062)],cnaTotal=10,chrRange=(26885980,83257441),
-    ... genePositions={'BRIP1':61863521})
+    ... genePositions={'BRIP1':61863521}) # doctest: +ELLIPSIS
+    <matplotlib.figure.Figure ...>
     """
     if sortPositions:
         cnaPositions = sorted(cnaPositions,key=lambda x: max(x)-min(x),reverse=True)
@@ -70,8 +71,8 @@ def drawCNAcircos(cnaPositions,cnaTotal=False,chrRange=None,sortPositions=True,
 def curvedHeatPlot(dataframe,columns,topDisplayed=10,cellwidth=.2,cellheight=.1,cmap='hot_r',
                    headingTextSize=14,curveLabels=True,filename=None):
     """
-    >>> curvedHeatPlot(Mock(),['col1','col2') #+doctest: ellipsis
-    <matplotlib.figure.Figure at ...>
+    >>> curvedHeatPlot(Mock(),['col1','col2']) # doctest: +ELLIPSIS
+    <matplotlib.figure.Figure ...>
     """
     from itertools import count
     cmap = plt.get_cmap(cmap)
