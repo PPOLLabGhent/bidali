@@ -2,6 +2,7 @@
 #R exposed top routines
 import pickle, re, sys, operator, LSD
 import pandas as pd, numpy as np
+from collections import OrderedDict
 import matplotlib.pyplot as plt
 from rpy2.rinterface import RRuntimeError
 from rpy2.robjects.packages import importr
@@ -56,10 +57,10 @@ def romer_fullMSigDB(counts_r,countsGeneLabels,**kwargs):
     >>> romer_fullMSigDB(counts_r,countsGeneLabels)
     """
     gc = get_gcindices_r(countsGeneLabels)
-    return {
-        gsc:romer(counts_r,index_r=gc[gsc],**kwargs) 
-        for gsc in gc
-    }
+    return OrderedDict([
+        (gsc,romer(counts_r,index_r=gc[gsc],**kwargs))
+        for gsc in sorted(gc)
+    ])
 
 def mroast(counts_r,index_r,design_r,contrast_r,set_statistic="mean"):
     """

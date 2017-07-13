@@ -2,6 +2,9 @@
 # fegnome => Fisher exact genome module
 # functions and classes for FE testing in relation to genomic context
 
+#TODO https://www.math.hmc.edu/funfacts/ffiles/10006.3.shtml -> proportional volume
+#TODO http://pythonhosted.org/gseapy/gseapy_example.html#prerank-example
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt

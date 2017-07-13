@@ -8,6 +8,8 @@ from inspect import getmembers
 from unittest.mock import MagicMock as Mock
 import LSD
 
+#TODO http://bokeh.pydata.org/en/latest/docs/gallery.html#gallery
+
 # General configuration
 sns.set(style="whitegrid", palette="pastel", color_codes=True)
 
