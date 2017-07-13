@@ -1,16 +1,22 @@
 #!/usr/bin/env python
 import matplotlib.pyplot as plt
 import matplotlib.patches as ptch
-import numpy as np
+import seaborn as sns
+import numpy as np, pandas as pd
 import networkx as nx
 from inspect import getmembers
 from unittest.mock import MagicMock as Mock
+import LSD
+
+# General configuration
+sns.set(style="whitegrid", palette="pastel", color_codes=True)
 
 def drawGeneEnvNetwork(gene,interactome='string',addNeighborEdges=True,node_color='r',layout='random_layout'):
     """
     interactome -> one of the networks in LSD.get_proteinNetworks
+    >> drawGeneEnvNetwork('BRIP1') # doctest: +ELLIPSIS
+    <matplotlib.figure.Figure ...>
     """
-    import LSD
     nws = LSD.get_proteinNetworks()
     nw = nws.__getattribute__(interactome+'nx')
     G = nx.Graph()
@@ -118,3 +124,47 @@ def curvedHeatPlot(dataframe,columns,topDisplayed=10,cellwidth=.2,cellheight=.1,
     
     if filename: figheatmap.savefig(filename,transparent=True)
     return figheatmap
+
+def dosageViolin(gene,dataset,ax=None,cntype='gain',risksToPlot=3):
+    """
+    >>> dosageViolin('BRIP1',dataset=Mock()) # doctest: +ELLIPSIS
+    """
+    ds = dataset
+    genedosage = pd.DataFrame({'expression': ds.exprdata.ix[gene],
+                               'cna': ds.geneCNA.ix[gene],
+    }).dropna()
+    genedosage['risk_status'] = (genedosage.T.apply(lambda x: 'high' if ds.metadata.ix[x.name].high_risk=='1' else 'low')
+                                 if risksToPlot == 2 else
+                                 genedosage.T.apply(lambda x: 'lowrisk' if ds.metadata.ix[x.name].high_risk == '0' else
+                                                   'highrisk_amp' if ds.metadata.ix[x.name].mycn_status == '1' else 'highrisk_sc')
+    )
+    
+    genedosage = genedosage[genedosage.cna!=('loss' if cntype=='gain' else 'gain')]
+    groupsizes = genedosage.groupby(['cna','risk_status']).size()
+    #print(groupsizes)
+        
+    #Plots
+    viofig,violax = (ax.get_figure(),ax) if ax else plt.subplots()
+    try: violax.set_title('{} ({})'.format(gene,ds.name))
+    except AttributeError: violax.set_title(gene)
+    
+    if risksToPlot == 2:
+        order=['normal',cntype]
+        hue_order = ['low','high']
+        combinations = list(itertools.product(order,hue_order))
+        sns.violinplot(x='cna', y='expression', hue='risk_status', data=genedosage, split=True,
+                       inner='points', palette={'high':'b','low':'y'},order=order, hue_order=hue_order, ax=violax)
+    elif risksToPlot == 3:
+        order = ['lowrisk','highrisk_sc','highrisk_amp']
+        hue_order = ['normal',cntype]
+        combinations = list(itertools.product(order,hue_order))
+        sns.violinplot(x='risk_status', y='expression', hue='cna', data=genedosage, split=True, inner='points',
+                       palette={'normal':'y',cntype:'b' if cntype=='loss' else 'r'}, order=order, hue_order=hue_order, ax=violax)
+    sns.despine(left=True)
+    
+    #Annotate sizes
+    for c,i in zip(combinations,range(len(combinations))):
+        violax.annotate(str(groupsizes[c[::-1]]) if c[::-1] in groupsizes else '0',(int(i/2)+(0.2 if i%2 else -0.2),.5),
+                        xycoords=('data','axes fraction'),ha='center')
+    
+    return viofig
