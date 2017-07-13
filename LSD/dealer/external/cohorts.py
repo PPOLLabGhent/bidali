@@ -5,6 +5,9 @@ from os.path import expanduser, exists
 from itertools import count
 from LSD import storeDatasetLocally, datadir, Dataset
 
+#TODO => NRC segmentation data from ~/Dropbiz/Lab/z_archive/AFW/project CONEXIC/NRC data/01. JISTIC
+#TODO => FD sequencing data
+
 @storeDatasetLocally
 def get_NRC(datadir=datadir+'NRC_data_AFW/'):
     metadata = pd.read_excel(datadir+'20111216_NRC_samples.xlsx',skiprows=4)
