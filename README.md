@@ -6,4 +6,10 @@
 - Install git from https://git-scm.com/downloads
 - open `Terminal`
 
+Copy paste below line by line:
+
+     mkdir ~/repos && cd ~/repos
+     git clone https://github.ugent.be/cvneste/lospy.git
+     cd ~/repos/lospy
+
 
