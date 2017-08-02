@@ -67,9 +67,6 @@ class DatasetRepo:
     def __init__(self,dataset,code,report,filename):
         import hashlib, pickle
         self.dataset = dataset
-        if type(dataset) is Dataset:
-            for ds in dataset.__datasets__:
-                self.__setattr__(ds,self.dataset.__getattr_(ds))
         self.report = report
         self.currentHash = hashlib.md5(code.encode()).hexdigest()
         self.code = OrderedDict([(self.currentHash,code)])
@@ -448,4 +445,21 @@ def get_msigdb6():
     mdb = genesetsCollections['MSigDB']
     return mdb
    
-### Cohorts
+if __name__ == '__main__':
+    import argparse
+    from rpy2.rinterface import RRuntimeError
+    from rpy2.robjects.packages import importr
+    import rpy2.robjects as ro
+    #Activate automatic pandas/r conversion
+    from rpy2.robjects import pandas2ri
+    pandas2ri.activate()
+
+    parser = argparse.ArgumentParser(description='Generate LSD dataset and store as RData.')
+    parser.add_argument('datasets', type=str, nargs='*', help='datasets to generate')
+    parser.add_argument('--list', action='store_true', help='list available datasets')
+
+    args = parser.parse_args()
+
+    if args.list:
+        listLSDatasets()
+    
