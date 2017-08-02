@@ -8,6 +8,7 @@ from zipfile import ZipFile
 from io import TextIOWrapper
 import pandas as pd, numpy as np
 from os.path import expanduser, exists
+from collections import OrderedDict
 
 ## Defaults
 datadir = expanduser('~/Dropbox (speleman lab)/Lab/z_archive/Datasets/')
@@ -48,6 +49,44 @@ class Dataset:
     def to_R(self):
         pass
 
+class DatasetRepo:
+    """
+    Object containing:
+      - a Dataset object
+      - a report on how the dataset was generated
+      - file location
+      - a history of the code that generated the current
+        dataset and earlier versions
+      - a hash of the code that generated the current dataset
+      - archived earlier dataset objects
+
+    Method to keep only the most recent version of the
+    dataset to free up hard disk space
+    """
+    def __init__(self,dataset,code,report,filename):
+        import hashlib, pickle
+        self.dataset = dataset
+        if type(dataset) is Dataset:
+            for ds in dataset.__datasets__:
+                self.__setattr__(ds,self.dataset.__getattr_(ds))
+        self.report = report
+        self.currentHash = hashlib.md5(code.encode()).hexdigest()
+        self.code = OrderedDict([(self.currentHash,code)])
+        self.archive = OrderedDict()
+        self.filename = filename
+        pickle.dump(self,open(filename,'wb'))
+
+    def update(self,dataset,code,report):
+        import hashlib, pickle
+        # Put previous object in archive
+        self.archive[self.currentHash] = self.dataset
+
+        # Update
+        self.dataset = dataset
+        self.report = report
+        self.currentHash = hashlib.md5(code.encode()).hexdigest()
+        self.code[self.currentHash] = code
+        pickle.dump(self,open(self.filename,'wb'))        
 
 def retrieveSources(dataset_getfunction):
     """
