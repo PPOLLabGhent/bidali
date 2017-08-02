@@ -3,12 +3,13 @@
 # Module that preprocesses commonly used datasets at Speleman Lab
 # and makes them available for use in python.
 
-import gzip, pickle
+import gzip, pickle, time
 from zipfile import ZipFile
-from io import TextIOWrapper
+from io import TextIOWrapper, StringIO
 import pandas as pd, numpy as np
 from os.path import expanduser, exists
 from collections import OrderedDict
+from contextlib import redirect_stdout, redirect_stderr
 
 ## Defaults
 datadir = expanduser('~/Dropbox (speleman lab)/Lab/z_archive/Datasets/')
@@ -46,9 +47,9 @@ class Dataset:
         for kw in kwargs:
             self.__setattr__(kw,kwargs[kw])
 
-    def to_R(self):
+    def generateRData(self):
         pass
-
+    
 class DatasetRepo:
     """
     Object containing:
@@ -148,6 +149,57 @@ def retrieveSources(dataset_getfunction):
 
     return wrapper
 
+def storeDatasetLocally_deprecated(dataset_getfunction):
+    """
+    Can be used as a decorator for 'get_dataset' functions.
+    It will check if a processed dataset is locally available,
+    and if so, load that one instead of processing from the source
+    files.
+
+    Should only be used for functions that do not process the data
+    differently depending on the 'get_dataset' function arguments.
+    """
+    import inspect, hashlib, re
+    dependency = re.compile(r'\W*Dependenc(y|ies): (.+)')
+    
+    def wrapper(*args, **kwargs):
+        import warnings
+        warnings.warn("deprecated", DeprecationWarning)
+        
+        # Check if data was already processed
+        ## Prepare hash
+        functionSource = inspect.getsource(dataset_getfunction).encode()
+        ### Check if dependencies
+        docstr = inspect.getdoc(dataset_getfunction)
+        if docstr:
+            dependencies = [e for d in (d.groups()[1].split()
+                                        for d in (dependency.search(l)
+                                                  for l in docstr.split('\n')) if d)
+                            for e in d]
+            for d in dependencies:
+                d = d.split('.')
+                d = getattr(globals()[d[0]],d[-1],globals()[d[0]]) #hack to get d with globals and getattr
+                try:
+                    functionSource+=inspect.getsource(d).encode()
+                except TypeError:
+                    functionSource+=pickle.dumps(d)
+        hashvalue = hashlib.md5(functionSource).hexdigest()
+        datastorage = '{}{}_{}.pickle'.format(processedDataStorage,
+                                              dataset_getfunction.__name__.replace('get_',''),
+                                              hashvalue)
+        if exists(datastorage):
+            dataset = pickle.load(open(datastorage,'rb'))
+            return dataset
+        else:
+            dataset = dataset_getfunction(*args, **kwargs)
+            try: pickle.dump(dataset,open(datastorage,'wb'))
+            except FileNotFoundError:
+                print('Not possible to store dataset locally. Create',processedDataStorage,
+                      'if you want to avoid reprocessing dataset on every call.')
+            return dataset
+
+    return wrapper
+
 def storeDatasetLocally(dataset_getfunction):
     """
     Can be used as a decorator for 'get_dataset' functions.
@@ -180,19 +232,42 @@ def storeDatasetLocally(dataset_getfunction):
                 except TypeError:
                     functionSource+=pickle.dumps(d)
         hashvalue = hashlib.md5(functionSource).hexdigest()
-        datastorage = '{}{}_{}.pickle'.format(processedDataStorage,
-                                              dataset_getfunction.__name__.replace('get_',''),
-                                              hashvalue)
+        datastorage = '{}{}.pickle'.format(processedDataStorage,
+                                              dataset_getfunction.__name__.replace('get_','')
+        )
+        
         if exists(datastorage):
-            dataset = pickle.load(open(datastorage,'rb'))
-            return dataset
+            datasetrepo = pickle.load(open(datastorage,'rb'))
+            if datasetrepo.currentHash == hashvalue:
+                print(datasetrepo.report)
+                return datasetrepo.dataset
+            else:
+                print('Dataset content out of date, updating:')
+                updateRepo = True
         else:
+            print('Dataset not locally available, generating:')
+            updateRepo = False
+
+        # Redirect stdout and stderr
+        stouterr_redirect = StringIO()
+        with redirect_stdout(stouterr_redirect), redirect_stderr(stouterr_redirect):
+            start = time.process_time()
+            # Run the function that generates the dataset
             dataset = dataset_getfunction(*args, **kwargs)
-            try: pickle.dump(dataset,open(datastorage,'wb'))
+            duration = time.process_time() - start
+            print('Dataset',datastorage,'generated',time.strftime('%c'))
+            print('Processing time',time.strftime('%H:%M:%S', time.gmtime(duration)))
+            
+        print(stouterr_redirect.getvalue())
+
+        if updateRepo:
+            datasetrepo.update(dataset,functionSource.decode(),stouterr_redirect.getvalue().strip())
+        else:
+            try: DatasetRepo(dataset,functionSource.decode(),stouterr_redirect.getvalue().strip(),datastorage)
             except FileNotFoundError:
                 print('Not possible to store dataset locally. Create',processedDataStorage,
                       'if you want to avoid reprocessing dataset on every call.')
-            return dataset
+        return dataset
 
     return wrapper
 
@@ -286,7 +361,7 @@ def get_centromeres():
     """
     Source: from R bioconductor GWASTools: data(centromeres.hg38)
     """
-    from seqanalysis import loadHumanGenome
+    from lospy.seqanalysis import loadHumanGenome
 
     # Centromere positions
     centromereshg38="""1      1 122026460  125184587

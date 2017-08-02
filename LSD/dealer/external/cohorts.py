@@ -104,8 +104,7 @@ def get_FischerData():
     
     return Dataset(**locals())
 
-#TODO => FD sequencing data
-#@storeDatasetLocally
+@storeDatasetLocally
 def get_SequencedFischerData():
     """
     For the sequence data, the Trente TUC files were chosen, following
