@@ -8,8 +8,23 @@
 
 Copy paste below line by line:
 
-     mkdir ~/repos && cd ~/repos
+     mkdir -p ~/{repos,Data/LSDpy} && cd ~/repos
      git clone https://github.ugent.be/cvneste/lospy.git
      cd ~/repos/lospy
+     virtualenv velsp
+     . velsp/bin/activate
+     pip install .
+     deactivate
 
+The lospy package can now be used. The following example illustrates preparing
+the neuroblastoma 39 cell line data ready for use in R:
+
+    . ~/repos/lospy/velsp/bin/activate
+    python -m LSD --list LSD.dealer.external.celllines.get_NB39
+
+To update the package, and get new available datasets:
+
+   cd ~/repos/lospy
+   git pull origin master
+   . velsp/bin/activate
 
