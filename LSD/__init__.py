@@ -3,7 +3,7 @@
 # Module that preprocesses commonly used datasets at Speleman Lab
 # and makes them available for use in python.
 
-import gzip, pickle, time
+import gzip, pickle, time, os
 from zipfile import ZipFile
 from io import TextIOWrapper, StringIO
 import pandas as pd, numpy as np
@@ -84,8 +84,12 @@ class DatasetRepo:
         self.report = report
         self.currentHash = hashlib.md5(code.encode()).hexdigest()
         self.code[self.currentHash] = code
-        pickle.dump(self,open(self.filename,'wb'))        
+        pickle.dump(self,open(self.filename,'wb'))
 
+    def wipeArchive(self):
+        self.archive = OrderedDict()
+        pickle.dump(self,open(self.filename,'wb'))
+        
 def retrieveSources(dataset_getfunction):
     """
     A dataset_getfunction function that contains 'Source:' lines
@@ -146,57 +150,6 @@ def retrieveSources(dataset_getfunction):
 
     return wrapper
 
-def storeDatasetLocally_deprecated(dataset_getfunction):
-    """
-    Can be used as a decorator for 'get_dataset' functions.
-    It will check if a processed dataset is locally available,
-    and if so, load that one instead of processing from the source
-    files.
-
-    Should only be used for functions that do not process the data
-    differently depending on the 'get_dataset' function arguments.
-    """
-    import inspect, hashlib, re
-    dependency = re.compile(r'\W*Dependenc(y|ies): (.+)')
-    
-    def wrapper(*args, **kwargs):
-        import warnings
-        warnings.warn("deprecated", DeprecationWarning)
-        
-        # Check if data was already processed
-        ## Prepare hash
-        functionSource = inspect.getsource(dataset_getfunction).encode()
-        ### Check if dependencies
-        docstr = inspect.getdoc(dataset_getfunction)
-        if docstr:
-            dependencies = [e for d in (d.groups()[1].split()
-                                        for d in (dependency.search(l)
-                                                  for l in docstr.split('\n')) if d)
-                            for e in d]
-            for d in dependencies:
-                d = d.split('.')
-                d = getattr(globals()[d[0]],d[-1],globals()[d[0]]) #hack to get d with globals and getattr
-                try:
-                    functionSource+=inspect.getsource(d).encode()
-                except TypeError:
-                    functionSource+=pickle.dumps(d)
-        hashvalue = hashlib.md5(functionSource).hexdigest()
-        datastorage = '{}{}_{}.pickle'.format(processedDataStorage,
-                                              dataset_getfunction.__name__.replace('get_',''),
-                                              hashvalue)
-        if exists(datastorage):
-            dataset = pickle.load(open(datastorage,'rb'))
-            return dataset
-        else:
-            dataset = dataset_getfunction(*args, **kwargs)
-            try: pickle.dump(dataset,open(datastorage,'wb'))
-            except FileNotFoundError:
-                print('Not possible to store dataset locally. Create',processedDataStorage,
-                      'if you want to avoid reprocessing dataset on every call.')
-            return dataset
-
-    return wrapper
-
 def storeDatasetLocally(dataset_getfunction):
     """
     Can be used as a decorator for 'get_dataset' functions.
@@ -206,11 +159,19 @@ def storeDatasetLocally(dataset_getfunction):
 
     Should only be used for functions that do not process the data
     differently depending on the 'get_dataset' function arguments.
+    The wrapper raises a warning if there are arguments to pass to 
+    the 'get_dataset' function.
     """
     import inspect, hashlib, re
+    from plumbum import colors
     dependency = re.compile(r'\W*Dependenc(y|ies): (.+)')
     
-    def wrapper(*args, **kwargs):
+    def wrapper(*args, verbose=True, **kwargs):
+        if args or kwargs:
+            import warings
+            warnings.warn(
+                'This decorated function is not designed to use with arguments. Be warned!'
+            )
         # Check if data was already processed
         ## Prepare hash
         functionSource = inspect.getsource(dataset_getfunction).encode()
@@ -237,12 +198,17 @@ def storeDatasetLocally(dataset_getfunction):
             datasetrepo = pickle.load(open(datastorage,'rb'))
             if datasetrepo.currentHash == hashvalue:
                 print(datasetrepo.report)
+                if verbose:
+                    print(colors.green & colors.bold | 'Repo size {:.1f}MB, archive contains {} other versions'.format(
+                        os.stat(datastorage).st_size/1024**2,
+                        len(datasetrepo.archive)
+                    ))
                 return datasetrepo.dataset
             else:
-                print('Dataset content out of date, updating:')
+                print(colors.cyan | 'Dataset content out of date, updating:')
                 updateRepo = True
         else:
-            print('Dataset not locally available, generating:')
+            print(colors.cyan | 'Dataset not locally available, generating:')
             updateRepo = False
 
         # Redirect stdout and stderr
@@ -264,6 +230,7 @@ def storeDatasetLocally(dataset_getfunction):
             except FileNotFoundError:
                 print('Not possible to store dataset locally. Create',processedDataStorage,
                       'if you want to avoid reprocessing dataset on every call.')
+            
         return dataset
 
     return wrapper

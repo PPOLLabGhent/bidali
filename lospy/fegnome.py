@@ -7,6 +7,7 @@
 
 import pandas as pd
 import numpy as np
+from collections import namedtuple, OrderedDict
 import matplotlib.pyplot as plt
 import matplotlib.patches as ptch
 from scipy.stats import fisher_exact
@@ -121,3 +122,48 @@ def fenrichmentscore(ranks,genesUp,genesDown=None):
         )
         
     return pd.DataFrame(fescores,columns=['oddratio','pvalue'],index=ranks.index[:-1])
+
+RankSumResult = namedtuple('RankSumResult',[
+    'probability',
+    'genesetsize',
+    'overlapsize',
+    'rankedgenes',
+    'nulldistrosize',
+    'fe_s','fe_p'])
+        
+def rankSumProbability(ranks,geneset,alternative='greater',nulldistrosize=10000,nulldistrosave=True,universe=30000,verbose=False):
+    """
+    ranks: pd.Series
+    geneset: set
+
+    >>> rankLogSumProbability(rankgenelist)
+    """
+    realsetlen = len(geneset)
+    setlen = ranks.index.isin(geneset).sum()
+    if not setlen: return RankSumResult(None,realsetlen,setlen,None,None,None,None)
+    ranksum = ranks[ranks.index.isin(geneset)].sum()
+    if nulldistrosave:
+        import pickle,hashlib,LSD
+        hashindex = hashlib.md5(str(tuple(sorted(ranks))).encode()).hexdigest()
+        try: nulldistros = pickle.load(open(LSD.processedDataStorage+'ranklogsum_nulldistros.pickle','rb'))
+        except FileNotFoundError: nulldistros = {}
+        if (hashindex,setlen) in nulldistros and nulldistros[(hashindex,setlen)][0] >= nulldistrosize:
+            nulldistrosize,nulldistro = nulldistros[(hashindex,setlen)]
+            if verbose: print('Using previously stored nulldistribution size',nulldistrosize)
+        else:
+            nulldistro = pd.Series([ranks.sample(n=setlen).sum() for i in range(nulldistrosize)])
+            nulldistros[(hashindex,setlen)] = (nulldistrosize, nulldistro)
+            pickle.dump(nulldistros,open(LSD.processedDataStorage+'ranklogsum_nulldistros.pickle','wb'))
+    else:
+        nulldistro = pd.Series([ranks.sample(n=setlen).sum() for i in range(nulldistrosize)])
+
+    if alternative == 'greater':
+        probability = float(sum(nulldistro < ranksum))/nulldistrosize
+    elif alternative == 'less':
+        probability = float(sum(nulldistro > ranksum))/nulldistrosize
+
+    fe = fisher_exact([[setlen,len(ranks)],
+                       [realsetlen-setlen,universe]],
+                      alternative='greater')
+        
+    return RankSumResult(probability,realsetlen,setlen,len(ranks),nulldistrosize,*fe)

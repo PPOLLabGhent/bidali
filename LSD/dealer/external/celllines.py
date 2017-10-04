@@ -22,3 +22,11 @@ file=GSE89413%5F2016%2D10%2D30%2DNBL%2Dcell%2Dline%2DSTAR%2Dfpkm%2Etxt%2Egz
     )
 
     return Dataset(exprdata=exprdata)
+
+def get_CCLE():
+    """
+    Reference: https://portals.broadinstitute.org/ccle
+    """
+    metadata = pd.read_table(datadir+'CCLE/CCLE_sample_info_file_2012-10-18.txt',index_col='CCLE name')
+    exprdata = pd.read_table(datadir+'CCLE/CCLE_Expression_Entrez_2012-09-29.gct',skiprows=2,index_col='Description')
+    return Dataset(exprdata=exprdata,metadata=metadata)

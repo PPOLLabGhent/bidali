@@ -9,23 +9,105 @@ from LSD import storeDatasetLocally, datadir, Dataset
 
 @storeDatasetLocally
 def get_NRC(datadir=datadir+'NRC_data_AFW/'):
+    # Metadata
     metadata = pd.read_excel(datadir+'20111216_NRC_samples.xlsx',skiprows=4)
     metadata.pop('Unnamed: 0')
     metadata.index = metadata.pop('NRC_ID')
-    exprdata = pd.read_table(datadir+'20170214_untransformedR2_expression.txt',skiprows=48,
-                         names=open(datadir+'20170214_untransformedR2_expression.txt').readline().split())
-    exprdata.pop('probeset')
-    exprdata.index = exprdata.pop('#H:hugo')
-    #exprdata = pd.read_table(gzip.open(datadir+'core_exon_nrc283_zi.tsv.gz','rt'),skiprows=8)
-    #exprdata.index = exprdata.pop('#H:probeset')
-    #probeset2genes =  exprdata.pop('hugo')
-    aCGH = pd.read_table(datadir+'20170214_untransformedR2_aCGH.txt',skiprows=44,
-                         names=open(datadir+'20170214_untransformedR2_aCGH.txt').readline().split())
-    aCGH.pop('probeset')
-    aCGH.index = aCGH.pop('#H:hugo')
-    return Dataset(**locals())
 
-#TODO: FischerData needs to be transformed to use the RNA seq counts in GSE62564
+    # Expression data
+    exprdata = pd.read_table(datadir+'mRNA_expression_data.txt',index_col='Probeset')
+    probeinfo = pd.read_table(datadir+'mRNA_info.txt',index_col='Probeset').dropna()
+    print('Only retaining exprdata for HUGO genes')
+    exprdata = exprdata[exprdata.index.isin(probeinfo.index)]
+    probeinfo = pd.DataFrame([(h,v) for v in exprdata.index for h in probeinfo.ix[v]['HUGO'].split(',')],
+                             columns=['HUGO','Probeset'])
+    print('For genes with multiple probes, taking median')
+    exprdata = probeinfo.join(other=exprdata,on='Probeset')
+    del exprdata['Probeset']
+    exprdata = exprdata.groupby('HUGO').median()
+    print('Removing empty stringed gene name. Genes with multiple probes -> median taken.')
+    exprdata.drop('',inplace=True)
+
+    # Copy number variant data
+    lo=LSD.get_liftover(frm=18,to=38)
+    segments = pd.read_table(expanduser('~/Dropbox (speleman lab)/\
+Lab/z_archive/AFW/project_CONEXIC/NRC_data/01_JISTIC/20111106_NRCdata_wavecorrected_en_Dublin_CBS.txt'))
+    segments.chromosome = segments.chromosome.apply(
+        lambda x: 'chrX' if x == 23 else 'chrY' if x == 24 else 'chr{}'.format(x))
+    segments['Start38'] = segments.T.apply(
+        lambda x: lo.convert_coordinate(x.chromosome,x.chr_start)).apply(lambda x: x[0][1] if x else np.nan
+    )
+    segments['End38'] = segments.T.apply(
+        lambda x: lo.convert_coordinate(x.chromosome,x.chr_end)).apply(lambda x: x[0][1] if x else np.nan
+    )
+    del lo, segments['chr_start'], segments['chr_end']
+    print(segments.shape[0],'before converting to hg38 from hg18')
+    segments = segments.dropna().copy()
+    print(segments.shape[0],'after converting to hg38')
+
+    ## Assign genes to regions
+    genannot = LSD.get_ensemblGeneannot()
+    # def get_genes(region,context):
+    #     """
+    #     segments dataframe needs to be sorted according to alphabetical chrom name, and numerical location
+    #     """
+    #     #Reset gene_iter if different context
+    #     if context != get_genes.previousContext:
+    #         get_genes.genes_iter = genannot.all_features(featuretype='gene',order_by=('seqid','start'))
+    #         get_genes.previousRunGene = False
+    #         get_genes.previousContext = context
+        
+    #     genes = []
+    #     if (get_genes.previousRunGene and
+    #         region.chromosome[3:] == get_genes.previousRunGene.chrom and
+    #         region.Start38 <= get_genes.previousRunGene.start and
+    #         region.End38 > get_genes.previousRunGene.start):
+    #         genes.append(get_genes.previousRunGene.attributes['gene_name'][0])
+    #         get_genes.previousRunGene = False
+            
+    #     starting = True
+    #     for gene in get_genes.genes_iter:
+    #         if starting:
+    #             if (
+    #                     (region.chromosome[3:] > gene.chrom) or
+    #                     (region.Start38 > gene.start)
+    #             ):
+    #                 continue
+    #             starting = False
+    #         if (region.chromosome[3:] == gene.chrom and region.Start38 <= gene.start and region.End38 > gene.start):
+    #             genes.append(gene.attributes['gene_name'][0])
+    #         else:
+    #             get_genes.previousRunGene = gene
+    #             break
+    #     return genes
+    # get_genes.previousContext = None
+
+    # segments.sort_values(['exp_id','chromosome','Start38'],inplace=True)
+    # segments['genes'] = segments.T.apply(lambda x: get_genes(x,context=x.exp_id))
+    
+    segments['genes'] = segments.T.apply(
+        lambda x: {f.attributes['gene_name'][0] for f in genannot.region('{}:{}-{}'.format(
+            x.chromosome[3:],int(x.Start38),int(x.End38)),featuretype='gene')}
+    )
+    segments['nrGenes'] = segments.genes.apply(len)
+    del genannot#, get_genes
+    #To set cut offs look at hist => aCGH.log2ratio.hist(ax=ax,bins='auto')
+    segments['annotation'] = segments.ratio.apply(lambda x: 'gain' if x > 0.3 else ('loss' if x < -0.3 else 'normal'))
+
+    geneCNVannotation = {}
+    for sname,sample in segments.groupby('exp_id'):
+        geneCNVannotation[sname] = {}
+        for i in sample.T:
+            for g in sample.ix[i].genes: geneCNVannotation[sname][g] = sample.ix[i].annotation
+    geneCNVannotation = pd.DataFrame(geneCNVannotation)
+    geneCNVannotation = geneCNVannotation.fillna('normal')
+
+    #aCGH = pd.read_table(datadir+'20170214_untransformedR2_aCGH.txt',skiprows=44,
+    #                     names=open(datadir+'20170214_untransformedR2_aCGH.txt').readline().split())
+    #aCGH.pop('probeset')
+    #aCGH.index = aCGH.pop('#H:hugo')
+
+    return Dataset(**locals())
 
 @storeDatasetLocally
 def get_FischerData():
@@ -229,4 +311,16 @@ def get_SequencedFischerData():
     exprdata_J = exprdata_J[metadata.index]
     aCGH = aCGH[aCGH.Sample.isin(metadata.index)]
     
+    return Dataset(**locals())
+
+def get_gtex():
+    """
+    Reference: https://www.gtexportal.org/home/datasets
+    """
+    gtex = pd.read_table(
+        gzip.open(datadir+'gtexportal/GTEx_Analysis_v6p_RNA-seq_RNA-SeQCv1.1.8_gene_median_rpkm.gct.gz'),
+        skiprows=2,index_col='Description'
+    )
+    ensgref = gtex.pop('Name')
+
     return Dataset(**locals())

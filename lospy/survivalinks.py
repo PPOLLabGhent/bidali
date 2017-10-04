@@ -9,6 +9,9 @@ import matplotlib.pyplot as plt
 def geneImpactSurvival(gene,expressions,metadata,groupingByQuantile=0.5,grouping=None,filter=None,
                        metacensorcol="overall_survival",metaDFDcol="death_from_disease",
                        plot=False,rounding=2):
+    """
+    Returns None if no meaningful groups
+    """
     if filter is not None:
         expressions = expressions[expressions.columns[filter]]
         metadata = metadata[filter]
@@ -19,14 +22,16 @@ def geneImpactSurvival(gene,expressions,metadata,groupingByQuantile=0.5,grouping
 
     kmf = KaplanMeierFitter()
     
-    kmf.fit(metadata[metacensorcol][~groupHigh], metadata[metaDFDcol][~groupHigh], label='low')
+    try: kmf.fit(metadata[metacensorcol][~groupHigh], metadata[metaDFDcol][~groupHigh], label='low')
+    except ValueError: return None
     lastlow = float(kmf.survival_function_.ix[kmf.survival_function_.last_valid_index()])
     if plot:
         if type(plot) is bool:
             ax = kmf.plot()
         else: ax = kmf.plot(ax=plot)
 
-    kmf.fit(metadata[metacensorcol][groupHigh], metadata[metaDFDcol][groupHigh], label='high')
+    try: kmf.fit(metadata[metacensorcol][groupHigh], metadata[metaDFDcol][groupHigh], label='high')
+    except ValueError: return None
     lasthigh = float(kmf.survival_function_.ix[kmf.survival_function_.last_valid_index()])
     if plot: kmf.plot(ax=ax)
 

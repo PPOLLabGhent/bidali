@@ -8,8 +8,9 @@
 
 Copy paste below line by line:
 
+     sudo pip3 install virtualenv # asks your password
      mkdir -p ~/{repos,Data/LSDpy} && cd ~/repos
-     git clone https://github.ugent.be/cvneste/lospy.git
+     git clone https://github.ugent.be/cvneste/lospy.git # asks username/password
      cd ~/repos/lospy
      virtualenv velsp
      . velsp/bin/activate

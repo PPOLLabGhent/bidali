@@ -90,3 +90,15 @@ def barcodeplot(fit_r,contrast,indices,geneset,geneset2=None,pngname=None,width=
                       index2 = indices.rx2(geneset2) if geneset2 else ro.NULL,**kwargs)
     if pngname: grdevices.dev_off()
 
+def rankSumProbsMSigDB(ranks,universe,adjpmethod='fdr'):
+    from lospy.fegnome import RankSumResult,rankSumProbability
+    gc = LSD.get_msigdb6()
+    results = OrderedDict()
+    for gsc in sorted(gc):
+        results[gsc] = pd.DataFrame({gs:rankSumProbability(ranks,gc[gsc][gs]) for gs in gc[gsc]}).T
+        results[gsc].columns = RankSumResult._fields
+        results[gsc]['fepa'] = stats.p_adjust(results[gsc].fe_p,method=adjpmethod)
+        results[gsc]['respa'] = stats.p_adjust(results[gsc].probability,method=adjpmethod)
+        results[gsc].sort_values(['fepa','respa'],inplace=True)
+
+    return results
