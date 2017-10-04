@@ -129,7 +129,7 @@ def curvedHeatPlot(dataframe,columns,topDisplayed=10,cellwidth=.2,cellheight=.1,
 
 def dosageViolin(gene,dataset,ax=None,cntype='gain',risksToPlot=3):
     """
-    >>> dosageViolin('BRIP1',dataset=Mock()) # doctest: +ELLIPSIS
+    >>> dosageViolin('BRIP1',dataset=Mock()) # doctest: +SKIP
     """
     ds = dataset
     genedosage = pd.DataFrame({'expression': ds.exprdata.ix[gene],

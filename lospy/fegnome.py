@@ -136,7 +136,9 @@ def rankSumProbability(ranks,geneset,alternative='greater',nulldistrosize=10000,
     ranks: pd.Series
     geneset: set
 
-    >>> rankLogSumProbability(rankgenelist)
+    >>> from .tests.test_fegnome import testRanks, testGeneset
+    >>> rankSumProbability(testRanks,testGeneset,nulldistrosave=False) # doctest: +ELLIPSIS
+    RankSumResult(...)
     """
     realsetlen = len(geneset)
     setlen = ranks.index.isin(geneset).sum()

@@ -4,6 +4,12 @@ import pandas as pd
 from lospy.fegnome import enrichometer, fenrichmentscore
 import matplotlib.pyplot as plt
 
+# Mocks for doctests
+testRanks = pd.Series({'gene_a':1,'gene_b':2,'gene_c':3,'gene_d':4})
+testGeneset = {'gene_b','gene_c'}
+
+# Test cases
+
 class test_fegnome(TestCase):
     def setUp(self):
         ranks = pd.Series(range(10),index=('gene{}'.format(i) for i in range(10)))

@@ -168,7 +168,7 @@ def storeDatasetLocally(dataset_getfunction):
     
     def wrapper(*args, verbose=True, **kwargs):
         if args or kwargs:
-            import warings
+            import warnings
             warnings.warn(
                 'This decorated function is not designed to use with arguments. Be warned!'
             )

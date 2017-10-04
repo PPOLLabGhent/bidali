@@ -19,7 +19,7 @@ utils = importr('utils')
 # Gene-set enrichment analysis
 def get_gcindices_r(countsGeneLabels,correctBackground=False,remove_empty=True):
     """
-    >>> indices_r = get_gcindices(counts.index,correctBackground=False)
+    >>> indices_r = get_gcindices(counts.index,correctBackground=False) # doctest: +SKIP
     """
     limma = importr('limma')
     gc = LSD.get_msigdb6()
@@ -41,7 +41,7 @@ def romer(counts_r,index_r,design_r,contrast_r):
     contrast_r -> coef or contrast vector
       e.g. contrasts_r.rx(True,"celllineIMR32.shairpinsh25+celllineIMR32.shairpinsh27"
 
-    >>> romer(counts_r,index_r,design_r,contrast_r)
+    >>> romer(counts_r,index_r,design_r,contrast_r) # doctest: +SKIP
     """
     limma = importr('limma')
     rr = limma.romer(counts_r,index=index_r,design=design_r,contrast=contrast_r)
@@ -54,7 +54,7 @@ def romer(counts_r,index_r,design_r,contrast_r):
 
 def romer_fullMSigDB(counts_r,countsGeneLabels,**kwargs):
     """
-    >>> romer_fullMSigDB(counts_r,countsGeneLabels)
+    >>> romer_fullMSigDB(counts_r,countsGeneLabels) # doctest: +SKIP
     """
     gc = get_gcindices_r(countsGeneLabels)
     return OrderedDict([
@@ -64,7 +64,7 @@ def romer_fullMSigDB(counts_r,countsGeneLabels,**kwargs):
 
 def mroast(counts_r,index_r,design_r,contrast_r,set_statistic="mean"):
     """
-    >>> mroast(counts_r,index_r,design_r,contrast_r)
+    >>> mroast(counts_r,index_r,design_r,contrast_r) # doctest: +SKIP
     """
     limma = importr('limma')
     return base.data_frame(limma.mroast(counts_r,index_r,design=design_r,contrast=contrast_r,set_statistic=set_statistic))
@@ -72,15 +72,23 @@ def mroast(counts_r,index_r,design_r,contrast_r,set_statistic="mean"):
 def genesets2indices_r(genesets,countsGeneLabels):
     """
     genesets should be a dictionary of genesets
-    >>> genesets2indices_r(genesets,countsGeneLabels)
+    >>> from .tests.test_retro import testGenesets, testCountsGenelabels
+    >>> print(genesets2indices_r(testGenesets,testCountsGenelabels))
+    [[1]]
+    [1] 1 2
+    <BLANKLINE>
+    [[2]]
+    [1] 2 3
+    <BLANKLINE>
+    <BLANKLINE>
     """
     limma = importr('limma')    
-    genesets_r = robjects.ListVector(genesets)
+    genesets_r = ro.ListVector(genesets)
     return limma.ids2indices(genesets, countsGeneLabels)
 
 def barcodeplot(fit_r,contrast,indices,geneset,geneset2=None,pngname=None,width=512,height=512,**kwargs):
     """
-    >>> barcodeplot(fit_r,3,indices['C5'],'GO_GLUTATHIONE_TRANSFERASE_ACTIVITY',pngname=f.name)
+    >>> barcodeplot(fit_r,3,indices['C5'],'GO_GLUTATHIONE_TRANSFERASE_ACTIVITY',pngname=f.name) # doctest: +SKIP
     """
     limma = importr('limma')
     if pngname:

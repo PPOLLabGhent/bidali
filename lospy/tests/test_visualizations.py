@@ -22,11 +22,11 @@ class test_drawGeneEnvNetwork(TestCase):
 
 class test_drawCNAcircos(TestCase):
     def setUp(self):
-        self.cnaPositions = Mock(side_effect=[(36094885,83084062),(59577514,83084062)])
+        self.cnaPositions = MagicMock(side_effect=[(36094885,83084062),(59577514,83084062)])
         
     def tearDown(self):
         del self.cnaPositions
 
     def test_drawCNAcircos(self):
-        drawCNAcircos(self.cnaPositions)
+        drawCNAcircos(self.cnaPositions,cnaTotal=10,chrRange=(26885980,83257441),genePositions={'BRIP1':61863521})
 
