@@ -6,7 +6,8 @@ import numpy as np, pandas as pd
 import networkx as nx
 from inspect import getmembers
 from unittest.mock import MagicMock as Mock
-import LSD
+from collections import OrderedDict
+import LSD, itertools
 
 #TODO http://bokeh.pydata.org/en/latest/docs/gallery.html#gallery
 
@@ -170,3 +171,33 @@ def dosageViolin(gene,dataset,ax=None,cntype='gain',risksToPlot=3):
                         xycoords=('data','axes fraction'),ha='center')
     
     return viofig
+
+def draw_cellcycle(annotations,totalCompartments=100,phases=OrderedDict([('G1',0),('S',45),('G2',65),('M',85)]),ax=None,innerAnnotRing=.5):
+    """
+    annotations => pd.Series with genes in index and peak time values
+
+    >>> ax = draw_cellcycle()
+    """
+    xytransform = lambda r,t: (r*np.cos(2*np.pi*(360-t)/360),r*np.sin(2*np.pi*(360-t)/360))
+    if ax:
+        fig = ax.get_figure()
+    else: fig,ax = plt.subplots()
+    padding = .1
+    innerRadius = .8
+    ax.axis('off')
+    ax.set_xlim((-1-padding,1+padding))
+    ax.set_ylim((-1-padding,1+padding))
+    ax.add_patch(ptch.Circle(xy=(0,0),radius=1,fill=False,lw=2))
+    ax.add_patch(ptch.Circle(xy=(0,0),radius=innerRadius,fill=False,lw=2))
+    compartments = np.arange(0,360,360/totalCompartments) - 90
+    phaseStart = list(phases.values())
+    for i,p in enumerate(phases):
+        ax.add_patch(ptch.PathPatch(ptch.Path([xytransform(1,compartments[phases[p]]),
+                                               xytransform(innerRadius,compartments[phases[p]])]),color='k',lw=5))
+        anAngle = np.mean((compartments[phaseStart[i]],compartments[phaseStart[i+1]] if i+1 < len(phases) else 360-90))
+        ax.annotate(p,xytransform(np.mean((1,innerRadius)),anAngle),va='center',ha='center')
+    for p,grp in annotations.groupby(by=annotations):
+        ax.add_patch(ptch.PathPatch(ptch.Path([xytransform(1,compartments[p]),
+                                               xytransform(innerRadius,compartments[p])]),color='r',lw=3))
+        ax.annotate(','.join(grp.index),xytransform((1+padding) if len(grp) == 1 else innerAnnotRing,compartments[p]),va='center',ha='center',rotation=180-compartments[p])
+    return ax

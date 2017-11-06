@@ -11,7 +11,8 @@ importr('preprocessCore')
 importr('limma')
 %Rpull p.adjust
 from scipy.stats import spearmanr,pearsonr,combine_pvalues
-from seqanalysis import literatureLinkSearch
+from lospy.seqanalysis import literatureLinkSearch
+import LSD
 
 # Default settings
 annotatedGenesOnly = True
@@ -181,9 +182,7 @@ def DEA(contrasts=None,coefs=None,counts=None):
 #limma volcanoplot and plotMDS need to be done either in qconsole or direct R environment
 
 # Gene-set analysis
-gc = pickle.load(open('/home/christophe/Data/Genomes/MSigDB/msigdb.pickle','br'))
-print('MSigDB version',gc['version'])
-gc = gc['MSigDB']
+gc = LSD.get_msigdb6()
 
 def gsea_prep(gc,correctBackground=True):
     """
