@@ -1,9 +1,9 @@
 from setuptools import setup
 
 setup(name = 'bidali',
-      version = '0.1',
-      description = 'Lab-related occult and secretive python package',
-      url = 'https://github.ugent.be/cvneste/bidali',
+      version = '0.1.0',
+      description = 'Biological Data Analysis Library',
+      url = 'https://github.com/beukueb/bidali',
       author = 'Christophe Van Neste',
       author_email = 'christophe.vanneste@ugent.be',
       license = 'MIT',
