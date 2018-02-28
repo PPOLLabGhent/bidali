@@ -11,7 +11,7 @@ importr('preprocessCore')
 importr('limma')
 %Rpull p.adjust
 from scipy.stats import spearmanr,pearsonr,combine_pvalues
-from lospy.seqanalysis import literatureLinkSearch
+from bidali.seqanalysis import literatureLinkSearch
 import LSD
 
 # Default settings

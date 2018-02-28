@@ -8,9 +8,9 @@ def get_UHRprofiles():
     PDP meta cnv dataset from Ultra High Risk project. 
     Samples are all high risk (not ultra in se, that was project aim)
 
-    Source: ~/Dropbiz/Basecamp/BRIP1/2017_003_Data_analysis_BRIP1_paper/profiles_UHR/
+    Source: ~/Dropbiz/Basecamp/BRIP1/2017/2017_003_Data_analysis_BRIP1_paper/profiles_UHR/
     """
-    datacn = LSD.expanduser("~/Dropbiz/Basecamp/BRIP1/2017_003_Data_analysis_BRIP1_paper/profiles_UHR/")
+    datacn = LSD.expanduser("~/Dropbiz/Basecamp/BRIP1/2017/2017_003_Data_analysis_BRIP1_paper/profiles_UHR/")
     centromereshg38 = LSD.get_centromeres()
     lo = LSD.get_lift19to38()
     

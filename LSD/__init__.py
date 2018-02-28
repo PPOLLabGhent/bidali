@@ -302,7 +302,7 @@ def get_centromeres():
     """
     Source: from R bioconductor GWASTools: data(centromeres.hg38)
     """
-    from lospy.seqanalysis import loadHumanGenome
+    from bidali.seqanalysis import loadHumanGenome
 
     # Centromere positions
     centromereshg38="""1      1 122026460  125184587

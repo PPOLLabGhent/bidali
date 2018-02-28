@@ -1,13 +1,13 @@
 from setuptools import setup
 
-setup(name = 'lospy',
+setup(name = 'bidali',
       version = '0.1',
       description = 'Lab-related occult and secretive python package',
-      url = 'https://github.ugent.be/cvneste/lospy',
+      url = 'https://github.ugent.be/cvneste/bidali',
       author = 'Christophe Van Neste',
       author_email = 'christophe.vanneste@ugent.be',
       license = 'MIT',
-      packages = ['lospy','LSD'],
+      packages = ['bidali','LSD'],
       install_requires = [
           #Generated with `pipreqs .` and then moved here from requirements.txt
           'gffutils==0.8.7.1',
