@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-# LSD: Lab Speleman Datasets
-# Module that preprocesses commonly used datasets at Speleman Lab
+# LSD: Localised Structured Datasets
+# Module that preprocesses commonly used datasets
 # and makes them available for use in python.
 
 import gzip, pickle, time, os
@@ -12,7 +12,7 @@ from collections import OrderedDict
 from contextlib import redirect_stdout, redirect_stderr
 
 ## Defaults
-datadir = expanduser('~/Dropbox (speleman lab)/Lab/z_archive/Datasets/')
+datadir = expanduser('~/Dropbiz/Lab/z_archive/Datasets/')
 processedDataStorage = expanduser('~/Data/LSDpy/')
 
 ## Utility functions

@@ -1,5 +1,7 @@
-# Documentation
+# BIological Data Analysis Library - Documentation
+
 ## Installation
+
 ### Mac OS X
 
 - Install python3 from https://www.python.org/downloads/ (version 3.6.2)
@@ -10,7 +12,7 @@ Copy paste below line by line:
 
      sudo pip3 install virtualenv # asks your password
      mkdir -p ~/{repos,Data/LSDpy} && cd ~/repos
-     git clone https://github.ugent.be/cvneste/bidali.git # asks username/password
+     git clone https://github.com/beukueb/bidali.git
      cd ~/repos/bidali
      virtualenv velsp
      . velsp/bin/activate
