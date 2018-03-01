@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(name = 'bidali',
       version = '0.1.5',
@@ -7,7 +7,7 @@ setup(name = 'bidali',
       author = 'Christophe Van Neste',
       author_email = 'christophe.vanneste@ugent.be',
       license = 'MIT',
-      packages = ['bidali'],
+      packages = find_packages(),
       install_requires = [
           #Generated with `pipreqs .` and then moved here from requirements.txt
           'networkx',
