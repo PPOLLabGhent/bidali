@@ -237,7 +237,7 @@ def storeDatasetLocally(dataset_getfunction):
 
 ## Datasets
 ### References/annotations
-from LSD.dealer.external.ensembl import get_ensembl, get_ensemblGeneannot
+from .dealer.external.ensembl import get_ensembl, get_ensemblGeneannot
 
 @retrieveSources
 def get_entrez():
