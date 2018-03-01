@@ -1,13 +1,13 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(name = 'bidali',
-      version = '0.1.2',
+      version = '0.1.3',
       description = 'Biological Data Analysis Library',
       url = 'https://github.com/beukueb/bidali',
       author = 'Christophe Van Neste',
       author_email = 'christophe.vanneste@ugent.be',
       license = 'MIT',
-      packages = ['bidali','LSD'],
+      packages = find_packages(),
       install_requires = [
           #Generated with `pipreqs .` and then moved here from requirements.txt
           'networkx',
