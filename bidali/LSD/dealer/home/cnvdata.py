@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import LSD
+from bidali import LSDxs
 import pandas as pd, numpy as np
 
 @LSD.storeDatasetLocally

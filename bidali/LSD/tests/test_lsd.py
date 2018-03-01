@@ -2,7 +2,7 @@
 
 from unittest.mock import Mock,MagicMock,patch,call
 from unittest import TestCase
-from LSD import storeDatasetLocally
+from bidali.LSD import storeDatasetLocally
 
 class test_storeDatasetLocally(TestCase):
     def setUp(self):

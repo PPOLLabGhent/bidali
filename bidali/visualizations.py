@@ -7,7 +7,8 @@ import networkx as nx
 from inspect import getmembers
 from unittest.mock import MagicMock as Mock
 from collections import OrderedDict
-import LSD, itertools
+from bidali import LSD
+import itertools
 
 #TODO http://bokeh.pydata.org/en/latest/docs/gallery.html#gallery
 

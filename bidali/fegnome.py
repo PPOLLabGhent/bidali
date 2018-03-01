@@ -11,7 +11,7 @@ from collections import namedtuple, OrderedDict
 import matplotlib.pyplot as plt
 import matplotlib.patches as ptch
 from scipy.stats import fisher_exact
-from LSD import get_centromeres
+from bidali.LSD import get_centromeres
 
 centromereshg38 = get_centromeres()
 

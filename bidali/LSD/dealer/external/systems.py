@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-import LSD, gzip, tarfile, biomart
-import pandas as pd
+from bidali import LSD
+import gzip, tarfile, biomart, pandas as pd
 from io import TextIOWrapper, StringIO
 from .ensembl import get_biomart
 

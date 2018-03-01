@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-import LSD, gzip
-import pandas as pd, numpy as np
+from bidali import LSD
+import pandas as pd, numpy as np, gzip
 from os.path import expanduser, exists
 from itertools import count
-from LSD import storeDatasetLocally, datadir, Dataset
+from bidali.LSD import storeDatasetLocally, datadir, Dataset
 
 def get_NB39():
     """

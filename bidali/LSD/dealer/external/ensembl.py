@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-import LSD, gzip
-from LSD import retrieveSources,processedDataStorage,datadir
-import pandas as pd
+from bidali import LSD
+from bidali.LSD import retrieveSources,processedDataStorage,datadir
+import gzip, pandas as pd
 from io import TextIOWrapper, StringIO
 from urllib.parse import parse_qsl
 

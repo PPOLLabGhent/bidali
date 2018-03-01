@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import LSD
+from bidali import LSD
 import pandas as pd, numpy as np
 from rpy2.robjects.packages import importr
 import rpy2.robjects as ro

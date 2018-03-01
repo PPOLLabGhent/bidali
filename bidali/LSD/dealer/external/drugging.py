@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-import LSD, gzip
-import pandas as pd
+from bidali import LSD
+import gzip, pandas as pd
 from io import TextIOWrapper
 
 def get_cancerrxgene(datadir=LSD.datadir+'PMID_published_tables/27397505_pharmacogenomics_cancer/', gene_cn=False, exprdata=False):

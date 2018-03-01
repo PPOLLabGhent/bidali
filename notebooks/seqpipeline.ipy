@@ -12,7 +12,7 @@ importr('limma')
 %Rpull p.adjust
 from scipy.stats import spearmanr,pearsonr,combine_pvalues
 from bidali.seqanalysis import literatureLinkSearch
-import LSD
+from bidali import LSD
 
 # Default settings
 annotatedGenesOnly = True
