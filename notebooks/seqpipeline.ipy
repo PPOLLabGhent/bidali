@@ -142,45 +142,6 @@ def plotCounts(geneCounts,title=''):
     plt.xticks(range(len(groupedCounts)),groupedCounts.index)
     plt.title(title)
 
-## Differential expression analysis
-def DEA(contrasts=None,coefs=None,counts=None):
-    """
-    If counts is not provided, assumes it is already present in R environment.
-    If contrasts is given, they should also be already present in the R env.
-    The design always has to be already set up.
-    coefs can be given instead of contrasts, when the contrasts match the design parameters directly
-    """
-    if counts:
-        %Rpush counts
-    %R voomedCounts = voom(counts,design=designSamples,plot=TRUE,normalize="quantile")
-    %R fit <- lmFit(voomedCounts,designSamples)
-    %R fit <- eBayes(fit)
-    coefficients = %R fit$coefficients
-    if not (contrasts or coefs):
-        return coefficients
-    elif coefs:
-        %R fit_contrasts <- fit
-        contrasts = coefs
-    else:
-        %R fit_contrasts <- contrasts.fit(fit,contrast)
-        %R fit_contrasts <- eBayes(fit_contrasts)
-        %R print(summary(fit_contrasts))
-
-    #Full results
-    results = {}
-    for res in contrasts:
-        %Rpush res
-        %R result <- topTable(fit_contrasts,coef=res[1],n=dim(counts)[1])
-        %Rpull result
-        results[res] = result
-        results[res]['gene_label'] = results[res].index.map(lambda x: mf[x])
-        results[res]['gene_label_signed'] = results[res].logFC.map(
-            lambda x: '+' if x > 0 else '-')+results[res].gene_label
-        print('# sig',res,'->',(results[res]['adj.P.Val']<=0.05).sum())
-        
-    return results
-#limma volcanoplot and plotMDS need to be done either in qconsole or direct R environment
-
 # Gene-set analysis
 gc = LSD.get_msigdb6()
 

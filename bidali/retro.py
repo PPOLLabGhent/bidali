@@ -16,6 +16,86 @@ base = importr('base')
 stats = importr('stats')
 utils = importr('utils')
 
+# Differential expression analysis
+def prepareDesign(metadata,design,reflevels=None):
+    """
+    Takes pandas metadata table and design string
+    to return R design object
+
+    e.g. design = '~0+treatment+batch'
+    """
+    metacols_r = {
+        col: ro.r.relevel(
+            ro.r.factor(metadata[col]),
+            ref=reflevels[col] if reflevels else None
+        )
+        for col in metadata
+    }
+    metadata_r = ro.r['data.frame'](**metacols_r)
+    design_r = ro.r['model.matrix'](ro.r.formula(design),data=metadata_r)
+    design_r.colnames = ro.StrVector(
+        [c.replace(':','.') for c in ro.r.colnames(design_r)]
+    ) # resolves naming issue when using interaction factors in design
+    #design = pd.DataFrame(np.array(design_r),columns=design_r.colnames,index=design_r.rownames)
+    #design.doxnox*2 + (-design.shairpinTBX2sh25 - design.shairpinTBX2sh27)*3*design.doxnox
+    print(design_r.colnames)
+    return design_r
+
+def prepareContrasts(design_r,contrasts):
+    """
+    Expects R design_r and list of contrasts that contain design_r column names
+    Returns contrasts_r and pd.DataFrame of contrasts_r
+
+    e.g. contrasts = [
+      'treatmentSHC002_dox - treatmentTBX2sh25_dox','treatmentSHC002_dox - treatmentTBX2sh27_dox',
+      'treatmentSHC002_nox - treatmentTBX2sh25_nox','treatmentSHC002_nox - treatmentTBX2sh27_nox'
+    ]
+    """
+    # import R limma package
+    limma = importr('limma')
+    contrasts_r = limma.makeContrasts(*contrasts,levels=design_r)
+    return contrasts_r, pd.DataFrame(
+        pandas2ri.ri2py(contrasts_r),
+        columns=ro.r.colnames(contrasts_r),
+        index=ro.r.rownames(contrasts_r)))
+    
+def DEA(counts,design_r,contrasts=None,coefs=None):
+    """
+    coefs can be given instead of contrasts, when the contrasts match the design parameters directly
+    Returns results and pd.DataFrame of normalized counts
+    """
+    # import R limma package
+    limma = importr('limma')
+    # tranform counts with voom
+    voomedCounts_r = limma.voom(counts,design=design_r,plot=True,normalize="quantile")
+    fit_r = limma.lmFit(voomedCounts_r,design_r)
+    fit_r = limma.eBayes(fit_r)
+    coefficients_r = fit_r.rx2('coefficients')) #fit_r$coefficients
+    if not (contrasts or coefs):
+        return coefficients_r
+    elif coefs:
+        fit_contrasts_r = fit_r
+        contrasts = coefs
+    else:
+        fit_contrasts_r = limma.contrasts_fit(fit_r,contrasts)
+        fit_contrasts_r = limma.eBayes(fit_contrasts_r)
+        print(ro.r.summary(fit_contrasts_r))
+
+    #Full results
+    results = {}
+    for res in contrasts:
+        result = limma.topTable(fit_contrasts_r,coef=res,n=len(counts))
+        results[res] = result
+        results[res]['gene_label'] = results[res].index.map(lambda x: mf[x])
+        results[res]['gene_label_signed'] = results[res].logFC.map(
+            lambda x: '+' if x > 0 else '-')+results[res].gene_label
+        print('# sig',res,'->',(results[res]['adj.P.Val']<=0.05).sum())
+        
+    return results, pd.DataFrame(
+        pandas2ri.ri2py(voomedCounts_r.rx2('E')),
+        columns=counts.columns,index=counts.index))
+#limma volcanoplot and plotMDS need to be done either in qconsole or direct R environment
+
 # Gene-set enrichment analysis
 def get_gcindices_r(countsGeneLabels,correctBackground=False,remove_empty=True):
     """
