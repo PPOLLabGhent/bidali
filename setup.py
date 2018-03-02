@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name = 'bidali',
-      version = '0.1.5',
+      version = '0.1.7',
       description = 'Biological Data Analysis Library',
       url = 'https://github.com/beukueb/bidali',
       author = 'Christophe Van Neste',

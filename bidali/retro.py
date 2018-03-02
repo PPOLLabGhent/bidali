@@ -86,9 +86,10 @@ def DEA(counts,design_r,contrasts=None,coefs=None):
     #Full results
     results = {}
     for res in contrasts:
-        result = limma.topTable(fit_contrasts_r,coef=res,n=len(counts))
-        results[res] = result
-        results[res]['gene_label'] = results[res].index.map(lambda x: mf[x])
+        result_r = limma.topTable(fit_contrasts_r,coef=res,n=len(counts))
+        results[res] = pandas2ri.ri2py(result_r)
+        results[res].index = ro.r.rownames(result_r)
+        results[res]['gene_label'] = results[res].index.map(lambda x: counts.index[int(x)-1])
         results[res]['gene_label_signed'] = results[res].logFC.map(
             lambda x: '+' if x > 0 else '-')+results[res].gene_label
         print('# sig',res,'->',(results[res]['adj.P.Val']<=0.05).sum())
