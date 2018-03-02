@@ -1,5 +1,5 @@
 # BIological Data Analysis Library - Documentation
-![bidali logo](bidali_logo.svg)
+![bidali logo](bidali_logo.svg =60x)
 
 ## Installation
 
