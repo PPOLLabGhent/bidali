@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 #R exposed top routines
-import pickle, re, sys, operator, LSD
+import pickle, re, sys, operator
+from bidali import LSD
 import pandas as pd, numpy as np
 from collections import OrderedDict
 import matplotlib.pyplot as plt
@@ -57,7 +58,8 @@ def prepareContrasts(design_r,contrasts):
     return contrasts_r, pd.DataFrame(
         pandas2ri.ri2py(contrasts_r),
         columns=ro.r.colnames(contrasts_r),
-        index=ro.r.rownames(contrasts_r)))
+        index=ro.r.rownames(contrasts_r)
+    )
     
 def DEA(counts,design_r,contrasts=None,coefs=None):
     """
@@ -70,7 +72,7 @@ def DEA(counts,design_r,contrasts=None,coefs=None):
     voomedCounts_r = limma.voom(counts,design=design_r,plot=True,normalize="quantile")
     fit_r = limma.lmFit(voomedCounts_r,design_r)
     fit_r = limma.eBayes(fit_r)
-    coefficients_r = fit_r.rx2('coefficients')) #fit_r$coefficients
+    coefficients_r = fit_r.rx2('coefficients') #fit_r$coefficients
     if not (contrasts or coefs):
         return coefficients_r
     elif coefs:
@@ -93,7 +95,8 @@ def DEA(counts,design_r,contrasts=None,coefs=None):
         
     return results, pd.DataFrame(
         pandas2ri.ri2py(voomedCounts_r.rx2('E')),
-        columns=counts.columns,index=counts.index))
+        columns=counts.columns,index=counts.index
+    )
 #limma volcanoplot and plotMDS need to be done either in qconsole or direct R environment
 
 # Gene-set enrichment analysis
