@@ -88,12 +88,12 @@ def enrichometer(ranks,genesUp,genesDown=None,universe=None,fexact_H1='two-sided
         pvmin = fenrichscores.pvalue.min()
         if pvmin <= feminpv:
             leadingEdgeGene = fenrichscores[fenrichscores.pvalue==pvmin].first_valid_index()
-            #ax.eventplot((normalized.ix[leadingEdgeGene],),lineoffsets=eventoffset,linelengths=eventlen,
+            #ax.eventplot((normalized.loc[leadingEdgeGene],),lineoffsets=eventoffset,linelengths=eventlen,
             #             color='g')
             ax.add_patch(ptch.Rectangle((-axiscale-reservoirR1,eventoffset-eventlen/2),
-                                        normalized.ix[leadingEdgeGene]+axiscale+reservoirR1,
+                                        normalized.loc[leadingEdgeGene]+axiscale+reservoirR1,
                                         eventlen,facecolor='r',alpha=.4))
-            ax.annotate('{:.3g}'.format(pvmin),(normalized.ix[leadingEdgeGene]+padding,eventoffset),
+            ax.annotate('{:.3g}'.format(pvmin),(normalized.loc[leadingEdgeGene]+padding,eventoffset),
                         ha='left',va='center',size=fontsize)
         else: leadingEdgeGene = None
         

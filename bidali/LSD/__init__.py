@@ -195,7 +195,8 @@ def storeDatasetLocally(dataset_getfunction):
         )
         
         if exists(datastorage):
-            datasetrepo = pickle.load(open(datastorage,'rb'))
+            with open(datastorage,'rb') as openedDatastorage:
+                datasetrepo = pickle.load(openedDatastorage)
             if datasetrepo.currentHash == hashvalue:
                 print(datasetrepo.report)
                 if verbose:

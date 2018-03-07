@@ -12,7 +12,7 @@ class test_expan(TestCase):
         self.annotations = pd.DataFrame({'Gene name':['g1gn','g2gn']}, index=['g1','g2'])
 
     def tearDown(self):
-        del self.counts self.metadata
+        del self.counts, self.metadata, self.annotations
 
     def test_expanInit(self):
         expan = Expan(self.counts, self.metadata, annotations = self.annotations)
