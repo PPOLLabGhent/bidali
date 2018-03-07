@@ -3,6 +3,15 @@
 
 Defines the Expan object for all your expression analysis needs.
 Relies under the hood on the retro module and R packages.
+
+>>> from bidali.expan import Expan
+>>> expan = Expan(                                                                                                      
+...   counts = '/home/christophe/Dropbiz/Basecamp/BRIP1/2016/2016_008_DDR_RNA sequencing/raw data-results/2015_TMPYP4_SVH_RSEMcounts_pp.csv',
+...   metadata = '/home/christophe/Dropbiz/Basecamp/BRIP1/2016/2016_008_DDR_RNA sequencing/raw data-results/2015_TMPYP4_metadata.csv',
+...   sep=','
+... )
+>>> expan.designator(design = '~batch+treatment+cellline', reflevels = {'batch':'seq1','cellline':'IMR32','treatment':'control'})
+>>> expan.exdif(contrasts = {'TMPYP4treated': 4,'cellline_effect': 5}, countfilter = 1)
 """
 import pandas as pd
 from bidali import retro
@@ -16,19 +25,25 @@ class Expan:
     def __init__(self,
                  counts, metadata, export = None,
                  annotations = None, annotatedOnly = True,
-                 counts_kwargs={'index_col':0},
-                 metadata_kwargs={'index_col':0}, **kwargs):
+                 counts_kwargs={'index_col':0,'sep':','},
+                 metadata_kwargs={'index_col':0,'sep':','}, **kwargs):
         """Expression analysis class
 
         Expects the filename for the counts and metadata table.
         Common counts and metadata pd.read_table arguments can 
         be provided as extra key word arguments. Different arguments
         for pd.read_table need to be specified in the counts_kwargs
-        and metadata_kwargs dictionaries
+        and metadata_kwargs dictionaries. The default index col is 0
+        and the default sep is ','. 
         """
+        # Include common kwargs in counts and metadata specific kwargs
+        counts_kwargs.update(kwargs)
+        metadata_kwargs.update(kwargs)
+        # Read tables
         self.counts = pd.read_table(counts,**counts_kwargs)
-        self.metadata = pd.read_table(counts,**metadata_kwargs)
-        if annotations: self.annotations = annotations
+        self.metadata = pd.read_table(metadata,**metadata_kwargs)
+        self._robjects = {} #dict to save private R objects
+        if annotations is not None: self.annotations = annotations
         else:
             from bidali.LSD.dealer.external.ensembl import get_biomart
             biomart = get_biomart()
@@ -40,15 +55,37 @@ class Expan:
         if export:
             self.export(export)
 
-    def designator(self):
-        pass
+    def __getitem__(self,key):
+        """
+        First assumes a gene name, and queries the different tables
+        for all gene-related information
+        """
+        if key in self.annotations.index:
+            geneid = key
+        else:
+            geneid = self.annotations.index[self.annotations['Gene name'] == key]
+        return GeneResult(
+            name = key,
+            counts = self.counts.loc[geneid],
+            counts_norm = self.counts_norm.loc[geneid],
+            exdif = OrderedDict([(k,self.results[k].loc[geneid]) for k in self.results]),
+            parent = self
+        )
 
-    def exdif(self, design, reflevels, contrasts, coefs = True, countfilter=1, quantro = False):
+    def designator(self, design, reflevels):
+        """Prepare experimental design
+
+        e.g. reflevels = {'treatment':'SHC002_nox','rep':'rep1'}
+        """
+        self.design = design
+        self._robjects['design'], self.designmatrix = retro.prepareDesign(
+            self.metadata, self.design, reflevels, RReturnOnly = False
+        )
+
+    def exdif(self, contrasts, countfilter=1, quantro = False):
         """Differential expression method
 
         Runs differential expression workflow
-
-        e.g. reflevels = {'treatment':'SHC002_nox','rep':'rep1'}
 
         e.g. contrasts = {'c1': 1, 'c2': 2} if coefs == True 
         else contrasts = {
@@ -56,29 +93,60 @@ class Expan:
           'c2': 'treatmentSHC002_nox - treatmentTBX2sh25_nox','treatmentSHC002_nox - treatmentTBX2sh27_nox'
         }
         """
+        self.contrasts = contrasts
         self.counts_fltd = (
             self.counts[self.counts.T.sum() > countfilter * len(self.counts.columns)]
             if countfilter else self.counts
         )
-        self.design = design
-        design_r = retro.prepareDesign(self.metadata,self.design,reflevels)
-        if coefs:
-            self.results, self.counts_norm = retro.DEA(self.counts,self.design_r,coefs=contrasts.values())
-        else:
-            contrasts_r, self.contrasts = retro.prepareContrasts(design_r,contrasts.values())
-            self.results, self.counts_norm = retro.DEA(self.counts,self.design_r,contrasts=contrasts.values())
+        self.results, self.counts_norm = retro.DEA(self.counts_fltd, self._robjects['design'], self.contrasts)
+        for k in self.results:
+             self.results[k]['Gene name'] = self.annotations['Gene name']
 
-    def export(location):
+    def exporter(self, location):
         """Export expression analysis object
         
         All relevant tables and figures are saved in a zipfolder at the specified location.
         """
         pass
 
-    @class_method
-    def import(location):
+    @staticmethod
+    def importer(location):
         """Import tables from a previous Expan
 
         Only counts, metadata and annotation are imported.
         """
         pass
+
+class GeneResult:
+    """
+    Collects gene specific results.
+    Methods for plotting, calculating knockdown
+    """
+    def __init__(self, name, counts, counts_norm, exdif, parent):
+        """
+        Differential expression gene result
+        """
+        self.name = name
+        self.counts = counts
+        self.counts_norm = counts_norm
+        self.exdif = exdif
+        self.parent = parent
+
+    def __repr__(self):
+        return '<GeneResult {}>'.format(self.name)
+
+    def __str__(self):
+        return '{}:\nCounts:\n{}\n\nNormalised:\n{}\n\nResults:\n{}\n'.format(
+            self.name,
+            self.counts.T,
+            self.counts_norm.T,
+            '\n'.join(['{} =>\n{}\n'.format(k,self.exdif[k].T) for k in self.exdif])
+        )
+
+class GenesetResult(GeneResult):
+    """
+    Inherits from GeneResult.
+    Offers extra methods for geneset related functionality
+    """
+    def __repr__(self):
+        return '<GenesetResult {}>'.format(self.name)

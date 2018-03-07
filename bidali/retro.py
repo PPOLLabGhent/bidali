@@ -18,7 +18,7 @@ stats = importr('stats')
 utils = importr('utils')
 
 # Differential expression analysis
-def prepareDesign(metadata,design,reflevels=None):
+def prepareDesign(metadata,design,reflevels=None,RReturnOnly=True):
     """
     Takes pandas metadata table and design string
     to return R design object
@@ -39,13 +39,16 @@ def prepareDesign(metadata,design,reflevels=None):
     ) # resolves naming issue when using interaction factors in design
     #design = pd.DataFrame(np.array(design_r),columns=design_r.colnames,index=design_r.rownames)
     #design.doxnox*2 + (-design.shairpinTBX2sh25 - design.shairpinTBX2sh27)*3*design.doxnox
-    print(design_r.colnames)
-    return design_r
-
-def prepareContrasts(design_r,contrasts):
+    if RReturnOnly:
+        return design_r
+    else:
+        design_p = pd.DataFrame(pandas2ri.ri2py(design_r), index = metadata.index, columns = design_r.colnames)
+        return design_r, design_p
+    
+def prepareContrasts(design_r,contrasts, RReturnOnly = True):
     """
     Expects R design_r and list of contrasts that contain design_r column names
-    Returns contrasts_r and pd.DataFrame of contrasts_r
+    Returns contrasts_r and also pd.DataFrame of contrasts_r if not RReturnOnly
 
     e.g. contrasts = [
       'treatmentSHC002_dox - treatmentTBX2sh25_dox','treatmentSHC002_dox - treatmentTBX2sh27_dox',
@@ -55,17 +58,35 @@ def prepareContrasts(design_r,contrasts):
     # import R limma package
     limma = importr('limma')
     contrasts_r = limma.makeContrasts(*contrasts,levels=design_r)
-    return contrasts_r, pd.DataFrame(
-        pandas2ri.ri2py(contrasts_r),
-        columns=ro.r.colnames(contrasts_r),
-        index=ro.r.rownames(contrasts_r)
-    )
-    
-def DEA(counts,design_r,contrasts=None,coefs=None):
+    if RReturnOnly:
+        return contrasts_r
+    else:
+        contrasts_p = pd.DataFrame(
+            pandas2ri.ri2py(contrasts_r),
+            columns=ro.r.colnames(contrasts_r),
+            index=ro.r.rownames(contrasts_r)
+        )
+        return contrasts_r, contrasts_p
+
+def DEA(counts,design_r,contrasts=None):
     """
-    coefs can be given instead of contrasts, when the contrasts match the design parameters directly
+    contrasts needs to be a dictionary with string keys and values to be used as design contrasts or 
+    a list of int values to be used as design coefficients
+
     Returns results and pd.DataFrame of normalized counts
     """
+    if isinstance(contrasts, list):
+        coefs = True
+        if not all(isinstance(k, int) for k in contrasts):
+            raise ValueError('coefficient list should be all integers')
+        coefnames = list(ro.r.colnames(design_r))
+        contrasts = OrderedDict([(coefnames[c-1],c) for c in contrasts])
+    else:
+        coefs = False
+        if not (all(isinstance(k, str) for k in contrasts) and
+                all(isinstance(v, str) for v in contrasts.values())):
+            raise ValueError('contrast dict should be all string pairs')
+    
     # import R limma package
     limma = importr('limma')
     # tranform counts with voom
@@ -73,25 +94,23 @@ def DEA(counts,design_r,contrasts=None,coefs=None):
     fit_r = limma.lmFit(voomedCounts_r,design_r)
     fit_r = limma.eBayes(fit_r)
     coefficients_r = fit_r.rx2('coefficients') #fit_r$coefficients
-    if not (contrasts or coefs):
-        return coefficients_r
-    elif coefs:
+    if coefs:
         fit_contrasts_r = fit_r
-        contrasts = coefs
     else:
-        fit_contrasts_r = limma.contrasts_fit(fit_r,contrasts)
+        contrasts_r, contrasts_p = prepareContrasts(design_r, contrasts.values(), RReturnOnly = False)
+        fit_contrasts_r = limma.contrasts_fit(fit_r, contrasts_r)
         fit_contrasts_r = limma.eBayes(fit_contrasts_r)
-        print(ro.r.summary(fit_contrasts_r))
+    print(ro.r.summary(fit_contrasts_r))
 
     #Full results
-    results = {}
+    results = OrderedDict()
     for res in contrasts:
-        result_r = limma.topTable(fit_contrasts_r,coef=res,n=len(counts))
+        result_r = limma.topTable(
+            fit_contrasts_r,coef=contrasts[res],n=len(counts)
+        )
         results[res] = pandas2ri.ri2py(result_r)
         results[res].index = ro.r.rownames(result_r)
-        results[res]['gene_label'] = results[res].index.map(lambda x: counts.index[int(x)-1])
-        results[res]['gene_label_signed'] = results[res].logFC.map(
-            lambda x: '+' if x > 0 else '-')+results[res].gene_label
+        #results[res]['gene_label'] = results[res].index.map(lambda x: counts.index[int(x)-1])
         print('# sig',res,'->',(results[res]['adj.P.Val']<=0.05).sum())
         
     return results, pd.DataFrame(
