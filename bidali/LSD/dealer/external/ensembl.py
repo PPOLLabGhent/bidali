@@ -7,7 +7,7 @@ from urllib.parse import parse_qsl
 
 ## Biomart
 @cacheableTable
-def get_biomart(atts=None):
+def get_biomart(atts=None,dataset='hsapiens_gene_ensembl'):
     """
     Get biomart id mappings
 
@@ -19,13 +19,15 @@ def get_biomart(atts=None):
     if not atts:
         atts = ['external_gene_name','external_gene_source','ensembl_gene_id',
                 'ensembl_transcript_id','ensembl_peptide_id']
-    hge = server.datasets['hsapiens_gene_ensembl']
-    s = hge.search({'attributes': atts}, header=1)
+    seda = server.datasets[dataset]
+    s = seda.search({'attributes': atts}, header=1)
     data = pd.read_table(StringIO(s.content.decode()))
     return data
 
 ## Human resources
 def get_ensembl(onlyGeneLabeled=True,onlyInChromosomes=None):
+    import warnings
+    warnings.warn("deprecated, use get_biomart instead", DeprecationWarning)
     ensembl = pd.read_table(datadir+'Genomes/Ensembl/Biomart/idmapping_extended.txt',
                         header=None,index_col=0,names=('egid','etid','start','stop','gcC','chr','strand','TSS','typeg','typet','gene_label','entrez'))
     ensembl = ensembl[~ensembl.index.duplicated()]

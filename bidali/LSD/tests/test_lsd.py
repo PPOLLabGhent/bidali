@@ -2,7 +2,7 @@
 
 from unittest.mock import Mock,MagicMock,patch,call
 from unittest import TestCase
-from bidali.LSD import storeDatasetLocally
+from bidali.LSD import storeDatasetLocally, cacheableTable
 
 class test_storeDatasetLocally(TestCase):
     def setUp(self):
@@ -31,4 +31,6 @@ class test_cacheable(TestCase):
         del self.mockFunction
 
     def test_cacheableTable(self):
-        pass
+        mockDecorated = cacheableTable(self.mockFunction)
+        mockDecorated(1,a=1,cache_name='mocktest')
+        self.mockFunction.assert_called()

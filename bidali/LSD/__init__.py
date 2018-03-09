@@ -221,6 +221,10 @@ def storeDatasetLocally(dataset_getfunction):
     differently depending on the 'get_dataset' function arguments.
     The wrapper raises a warning if there are arguments to pass to 
     the 'get_dataset' function.
+
+    As opposed to cacheable decorated functions, storeDatasetLocally
+    is intended for volatile source code, such as e.g. your own scripts
+    for which it is nonetheless useful being able to cache results. 
     """
     import inspect, hashlib, re
     from plumbum import colors
