@@ -1,7 +1,19 @@
 #!/usr/bin/env python
+# Plotting imports
+import matplotlib
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as ptch
 import seaborn as sns
+# General configuration
+sns.set(style="whitegrid", palette="pastel", color_codes=True)
+# Set matplotlib to interactive mode when executed from interactive shell
+import os
+if 'ps1' in vars(os.sys):
+    plt.ion()
+    fig, ax = plt.subplots() #TODO for the moments prevents crashes, but very hacky solution
+
+# Data processing imports
 import numpy as np, pandas as pd
 import networkx as nx
 from inspect import getmembers
@@ -12,8 +24,20 @@ import itertools
 
 #TODO http://bokeh.pydata.org/en/latest/docs/gallery.html#gallery
 
-# General configuration
-sns.set(style="whitegrid", palette="pastel", color_codes=True)
+# PLotting functions
+def plotGeneCounts(data,x,hue,y='counts',dodge=True,jitter=False,ax=None,**kwargs):
+        """
+        Plot counts for a gene.
+        The default counts columns x is set as 'counts'
+        
+        e.g. x = 'cellline'
+             hue = 'treatment'
+        """
+        ax = sns.stripplot(
+            x=x, y=y, hue=hue, data=data,
+            dodge=dodge, jitter=jitter, ax=ax, **kwargs
+        )
+        return ax
 
 def drawGeneEnvNetwork(gene,interactome='string',addNeighborEdges=True,node_color='r',layout='random_layout'):
     """

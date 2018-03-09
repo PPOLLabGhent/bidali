@@ -12,6 +12,7 @@ from collections import OrderedDict
 from contextlib import redirect_stdout, redirect_stderr
 
 ## Defaults
+from ..config import config
 datadir = expanduser('~/Dropbiz/Lab/z_archive/Datasets/')
 processedDataStorage = expanduser('~/Data/LSDpy/')
 
@@ -149,6 +150,65 @@ def retrieveSources(dataset_getfunction):
                 raise
 
     return wrapper
+
+def cacheable(importer,exporter,extension='.cache'):
+    """
+    Produces decorators with a specified importer and exporter function.
+    For example, if a function produces a pandas DataFrame, the importer,
+    and exporter could be respectively a lambda for DataFrame.read_csv 
+    and DataFrame.to_csv
+
+    extension specifies the file extension used by the caching functions
+    """
+    def cachedecorator(function):
+        def wrapper(*args,cache=True,cache_name='',**kwargs):
+            #produce function call hash -> function name, args and kwargs should be merged, stringified and hashed
+            import inspect, hashlib, time, datetime
+            signature = inspect.signature(function)
+            boundArgs = signature.bind(*args,**kwargs)
+            boundArgs.apply_defaults()
+            callhash = '{}_{}'.format(
+                function.__name__ if not cache_name else cache_name,
+                hashlib.md5(boundArgs.__repr__().encode()).hexdigest()
+            )
+            cachedir = config['LSD']['cachedir']
+            cachefile = os.path.join(cachedir,'{}{}'.format(callhash,extension))
+            # If cache, check if cache exists and how long it is allowed to exist in config
+            timeMap = {'h': 'hours', 'd': 'days', 'w': 'weeks'}
+            cacheAllowedTime = config['LSD']['cache']
+            cacheAllowedTime = datetime.timedelta(
+                **{timeMap[t]:int(cacheAllowedTime[:-1]) for t in timeMap if cacheAllowedTime.endswith(t)}
+            )
+            tTBM = time.time() - cacheAllowedTime.total_seconds() # time To Be Modified
+            #time.strftime('%c',time.gmtime(tTBM))
+            if cache and os.path.exists(cachefile) and os.path.getmtime(cachefile) > tTBM: #within allowed cache time
+                return importer(cachefile)
+            elif cache:
+                # Check if cachedir exists
+                if not os.path.exists(cachedir):
+                    raise FileNotFoundError(
+                        "LSD cache dir ({}) does not exist. Create, change in config or run function with cache=False".format(cachedir)
+                    )
+                # Redirect stdout and stderr
+                stouterr_redirect = StringIO()
+                with redirect_stdout(stouterr_redirect), redirect_stderr(stouterr_redirect):
+                    functionData = function(*args,**kwargs)
+                stouterr_function = stouterr_redirect.getvalue().strip()
+                if stouterr_function: print(stouterr_function)
+                exporter(functionData,cachefile,stouterr_function)
+                return functionData
+            else:
+                return function(*args,**kwargs)
+            
+        return wrapper
+    return cachedecorator
+
+#cacheableTable reads from and writes to csv, does not log function output
+cacheableTable = cacheable(
+    importer = lambda x: pd.read_csv(x,index_col=0),
+    exporter = lambda x,y,z: x.to_csv(y),
+    extension = '.csv'
+)
 
 def storeDatasetLocally(dataset_getfunction):
     """

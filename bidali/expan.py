@@ -11,9 +11,12 @@ Relies under the hood on the retro module and R packages.
 ...   sep=','
 ... )
 >>> expan.designator(design = '~batch+treatment+cellline', reflevels = {'batch':'seq1','cellline':'IMR32','treatment':'control'})
->>> expan.exdif(contrasts = {'TMPYP4treated': 4,'cellline_effect': 5}, countfilter = 1)
+>>> expan.exdif(contrasts = [4, 5], countfilter = 1)
+>>> brip1 = expan['BRIP1']
+>>> brip1.plotCounts('cellline','treatment')
 """
 import pandas as pd
+import numpy as np
 from bidali import retro
 from collections import OrderedDict
 
@@ -53,7 +56,7 @@ class Expan:
         if annotatedOnly:
             self.counts = self.counts[self.counts.index.isin(self.annotations.index)]
         if export:
-            self.export(export)
+            self.exporter(export)
 
     def __getitem__(self,key):
         """
@@ -142,6 +145,32 @@ class GeneResult:
             self.counts_norm.T,
             '\n'.join(['{} =>\n{}\n'.format(k,self.exdif[k].T) for k in self.exdif])
         )
+
+    def calcKD(self, groupingCol, knockdownCol, knockdownControl = 'control'):
+        """Calculate knockdown
+
+        groupingCol => grouping column name in analysis metadata
+        knockdownCol => kd column name in analysis metadata
+         within that column knockdownControl has to be the value of the control condition
+
+        Missing values should be provided as np.NaN
+        """
+        treatments = {t for t in self.parent.metadata[knockdownCol] if t != knockdownControl}
+        kd = self.counts.groupby(self.parent.metadata[groupingCol]
+        ).aggregate(
+            {t:lambda x,t=t: (x.filter(regex=t).get_values()[0] if x.filter(regex=t).any() else np.nan)/
+             x.filter(regex=knockdownControl).get_values()[0]
+             for t in treatments})
+        return kd
+
+    def plotCounts(self, x, hue, normalisedCounts = True, **kwargs):
+        """
+        Plot counts for a gene
+        """
+        from .visualizations import plotGeneCounts
+        df = self.counts_norm.T.join(self.parent.metadata)
+        df.columns = ['counts'] + list(df.columns[1:])
+        return plotGeneCounts(df, x=x, hue=hue, **kwargs)
 
 class GenesetResult(GeneResult):
     """

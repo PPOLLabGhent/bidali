@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 from bidali import LSD
-from bidali.LSD import retrieveSources,processedDataStorage,datadir
+from bidali.LSD import retrieveSources,cacheableTable,processedDataStorage,datadir
 import gzip, pandas as pd
 from io import TextIOWrapper, StringIO
 from urllib.parse import parse_qsl
 
 ## Biomart
+@cacheableTable
 def get_biomart(atts=None):
     """
     Get biomart id mappings

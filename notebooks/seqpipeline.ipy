@@ -119,29 +119,6 @@ def clusterCounts(counts):
     Z=linkage(Y)
     dendrogram(Z,labels=[c[3:].split('-')[0] for c in counts.columns])
 
-## Calculate knockdown
-def calcKD(geneCounts,
-           grouping = lambda x: x.split('_')[0] + re.search('seq\d',x).group(),
-           controlregex=r'shcontrol',
-           treatments=(r'sh16',r'sh17')):
-    """
-    Missing values should be provided as np.NaN
-    """
-    kd = geneCounts.groupby(grouping
-    ).aggregate({t:lambda x,t=t: (x.filter(regex=t).get_values()[0] if x.filter(regex=t).any() else np.nan)/
-                 x.filter(regex=controlregex).get_values()[0]
-                 for t in treatments})
-    return kd
-
-## Plot counts for a gene
-def plotCounts(geneCounts,title=''):
-    groupedCounts = geneCounts.groupby(lambda x: x[:x.rindex('_')]
-    ).aggregate(lambda x: list(x))
-    plt.scatter([i for exp,i in zip(groupedCounts,range(len(groupedCounts))) for s in exp],
-                [s for exp,i in zip(groupedCounts,range(len(groupedCounts))) for s in exp])
-    plt.xticks(range(len(groupedCounts)),groupedCounts.index)
-    plt.title(title)
-
 # Gene-set analysis
 gc = LSD.get_msigdb6()
 

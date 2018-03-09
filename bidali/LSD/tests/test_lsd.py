@@ -22,3 +22,13 @@ class test_storeDatasetLocally(TestCase):
              patch('pickle.dump') as mpd, patch('pickle.load'), patch('builtins.open'):
             wrappedFunction()#Mock())
         mgs.assert_called_once()
+
+class test_cacheable(TestCase):
+    def setUp(self):
+        self.mockFunction = MagicMock()
+
+    def tearDown(self):
+        del self.mockFunction
+
+    def test_cacheableTable(self):
+        pass
