@@ -33,6 +33,7 @@ def plotGeneCounts(data,x,hue,y='counts',dodge=True,jitter=False,ax=None,**kwarg
         e.g. x = 'cellline'
              hue = 'treatment'
         """
+        if ax is None: fig, ax = plt.subplots()
         ax = sns.stripplot(
             x=x, y=y, hue=hue, data=data,
             dodge=dodge, jitter=jitter, ax=ax, **kwargs
