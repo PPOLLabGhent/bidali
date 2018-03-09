@@ -7,8 +7,7 @@ Relies under the hood on the retro module and R packages.
 >>> from bidali.expan import Expan
 >>> expan = Expan(                                                                                                      
 ...   counts = '/home/christophe/Dropbiz/Basecamp/BRIP1/2016/2016_008_DDR_RNA sequencing/raw data-results/2015_TMPYP4_SVH_RSEMcounts_pp.csv',
-...   metadata = '/home/christophe/Dropbiz/Basecamp/BRIP1/2016/2016_008_DDR_RNA sequencing/raw data-results/2015_TMPYP4_metadata.csv',
-...   sep=','
+...   metadata = '/home/christophe/Dropbiz/Basecamp/BRIP1/2016/2016_008_DDR_RNA sequencing/raw data-results/2015_TMPYP4_metadata.csv'
 ... )
 >>> expan.designator(design = '~batch+treatment+cellline', reflevels = {'batch':'seq1','cellline':'IMR32','treatment':'control'})
 >>> expan.exdif(contrasts = [4, 5], countfilter = 1)
@@ -28,8 +27,7 @@ class Expan:
     def __init__(self,
                  counts, metadata, export = None,
                  annotations = None, annotatedOnly = True,
-                 counts_kwargs={'index_col':0,'sep':','},
-                 metadata_kwargs={'index_col':0,'sep':','}, **kwargs):
+                 counts_kwargs={}, metadata_kwargs={}, **kwargs):
         """Expression analysis class
 
         Expects the filename for the counts and metadata table.
@@ -40,11 +38,17 @@ class Expan:
         and the default sep is ','. 
         """
         # Include common kwargs in counts and metadata specific kwargs
-        counts_kwargs.update(kwargs)
-        metadata_kwargs.update(kwargs)
+        default_kwargs = {'index_col':0,'sep':','}
+        default_kwargs.update(kwargs)
+        counts_kwargs.update(default_kwargs)
+        metadata_kwargs.update(default_kwargs)
         # Read tables
         self.counts = pd.read_table(counts,**counts_kwargs)
         self.metadata = pd.read_table(metadata,**metadata_kwargs)
+        if len(self.metadata) != sum(self.counts.columns.isin(self.metadata.index)):
+            raise Exception('count column names and metatada row names need to match!')
+        # Set column order of counts, to row order of metadata
+        self.counts = self.counts[self.metadata.index]
         self._robjects = {} #dict to save private R objects
         if annotations is not None: self.annotations = annotations
         else:
@@ -75,6 +79,14 @@ class Expan:
             parent = self
         )
 
+    def __delitem__(self,sample):
+        """
+        Deletes a sample from counts and metadata
+        """
+        self.counts = self.counts.drop(sample,axis=1)
+        self.metadata = self.metadata.drop(sample)
+        
+
     def designator(self, design, reflevels):
         """Prepare experimental design
 
@@ -82,7 +94,8 @@ class Expan:
         """
         self.design = design
         self._robjects['design'], self.designmatrix = retro.prepareDesign(
-            self.metadata, self.design, reflevels, RReturnOnly = False
+            self.metadata[self.metadata.columns[self.metadata.columns.isin(reflevels)]],
+            self.design, reflevels, RReturnOnly = False
         )
 
     def exdif(self, contrasts, countfilter=1, quantro = False):
@@ -119,6 +132,15 @@ class Expan:
         Only counts, metadata and annotation are imported.
         """
         pass
+
+    @staticmethod
+    def convert_excell_to_csv(filename,sheet_name=0):
+        """
+        Convenience function to e.g. convert an metadata excell table to a csv equivalent
+        """
+        newFilename = filename[:filename+rindex('.')]+'.csv'
+        pd.read_excel(filename,sheet_name=sheet_name).to_csv(newFilename)
+        return newFilename
 
 class GeneResult:
     """
@@ -168,7 +190,7 @@ class GeneResult:
         Plot counts for a gene
         """
         from .visualizations import plotGeneCounts
-        df = self.counts_norm.T.join(self.parent.metadata)
+        df = (self.counts_norm if normalisedCounts else self.counts).T.join(self.parent.metadata)
         df.columns = ['counts'] + list(df.columns[1:])
         return plotGeneCounts(df, x=x, hue=hue, **kwargs)
 
