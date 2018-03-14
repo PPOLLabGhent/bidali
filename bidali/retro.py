@@ -120,6 +120,7 @@ def DEA(counts,design_r,contrasts=None):
 #limma volcanoplot and plotMDS need to be done either in qconsole or direct R environment
 
 # Gene-set enrichment analysis
+## limma based
 def get_gcindices_r(countsGeneLabels,correctBackground=False,remove_empty=True):
     """
     >>> indices_r = get_gcindices(counts.index,correctBackground=False) # doctest: +SKIP
@@ -172,9 +173,9 @@ def mroast(counts_r,index_r,design_r,contrast_r,set_statistic="mean"):
     limma = importr('limma')
     return base.data_frame(limma.mroast(counts_r,index_r,design=design_r,contrast=contrast_r,set_statistic=set_statistic))
 
-def genesets2indices_r(genesets,countsGeneLabels):
+def genesets2indices_r(genesets, geneLabels, remove_empty=True):
     """
-    genesets should be a dictionary of genesets
+    genesets should be a dictionary of geneset lists, and geneLabels a list of gene labels
     >>> from .tests.test_retro import testGenesets, testCountsGenelabels
     >>> print(genesets2indices_r(testGenesets,testCountsGenelabels))
     [[1]]
@@ -185,9 +186,9 @@ def genesets2indices_r(genesets,countsGeneLabels):
     <BLANKLINE>
     <BLANKLINE>
     """
-    limma = importr('limma')    
-    genesets_r = ro.ListVector(genesets)
-    return limma.ids2indices(genesets, countsGeneLabels)
+    limma = importr('limma')
+    genesets_r = ro.ListVector({gs:ro.StrVector(genesets[gs]) for gs in genesets})
+    return limma.ids2indices(genesets_r, geneLabels, remove_empty = remove_empty)
 
 def barcodeplot(fit_r,contrast,indices,geneset,geneset2=None,pngname=None,width=512,height=512,**kwargs):
     """
@@ -201,6 +202,12 @@ def barcodeplot(fit_r,contrast,indices,geneset,geneset2=None,pngname=None,width=
                       index2 = indices.rx2(geneset2) if geneset2 else ro.NULL,**kwargs)
     if pngname: grdevices.dev_off()
 
+## fgsea based
+def fgsea(genesets):
+    fgsea = importr('fgsea')
+    
+
+## rank sums
 def rankSumProbsMSigDB(ranks,universe,adjpmethod='fdr'):
     from bidali.fegnome import RankSumResult,rankSumProbability
     gc = LSD.get_msigdb6()
