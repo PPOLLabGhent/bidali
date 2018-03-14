@@ -203,9 +203,22 @@ def barcodeplot(fit_r,contrast,indices,geneset,geneset2=None,pngname=None,width=
     if pngname: grdevices.dev_off()
 
 ## fgsea based
-def fgsea(genesets):
+def fgsea(genesets_r, ranks, minSize = 15, maxSize = 500, nperm = 10000):
+    """
+    Ranks should be pd.Series with as index all genes in geneLabels used for generating genesets_r
+    with e.g. genesets2indices_r
+    """
     fgsea = importr('fgsea')
-    
+    fgseaRes_r = fgsea.fgsea(
+        pathways = genesets_r, stats = pd.Series(list(ranks),index=range(1,len(ranks)+1)),
+        minSize = minSize, maxSize = maxSize, nperm = nperm
+    )
+    fgseaRes = pandas2ri.ri2py(fgseaRes_r.rx(True,-8))
+    fgseaRes['leadingEdge'] = [
+        [ranks.index[int(gn)-1] for gn in fgseaRes_r.rx2(i,'leadingEdge')]
+        for i in range(1,len(fgseaRes_r.rownames)+1)
+    ]
+    return fgseaRes.sort_values('padj')
 
 ## rank sums
 def rankSumProbsMSigDB(ranks,universe,adjpmethod='fdr'):
