@@ -124,6 +124,8 @@ def DEA(counts,design_r,contrasts=None):
 def get_gcindices_r(countsGeneLabels,correctBackground=False,remove_empty=True):
     """
     >>> indices_r = get_gcindices(counts.index,correctBackground=False) # doctest: +SKIP
+
+    TODO overlapping with genesets2indices_r => refactor code
     """
     limma = importr('limma')
     gc = LSD.get_msigdb6()
@@ -185,6 +187,8 @@ def genesets2indices_r(genesets, geneLabels, remove_empty=True):
     [1] 2 3
     <BLANKLINE>
     <BLANKLINE>
+
+    TODO test function for gene level conversion between python and R
     """
     limma = importr('limma')
     genesets_r = ro.ListVector({gs:ro.StrVector(genesets[gs]) for gs in genesets})
@@ -207,6 +211,8 @@ def fgsea(genesets_r, ranks, minSize = 15, maxSize = 500, nperm = 10000):
     """
     Ranks should be pd.Series with as index all genes in geneLabels used for generating genesets_r
     with e.g. genesets2indices_r
+
+    TODO test function for gene level conversion between python and R
     """
     fgsea = importr('fgsea')
     fgseaRes_r = fgsea.fgsea(
