@@ -352,10 +352,10 @@ def get_proteinNetworks():
     stringids = stringids[stringids['#Entrez_Gene_ID'].isin(entrez.index)]
     stringdb = stringdb[stringdb.combined_score > 400] #study stringdb.combined_score.hist(bins='auto') to set threshold
     stringdb = stringdb[stringdb.protein1.isin(stringids.index) & stringdb.protein2.isin(stringids.index)]
-    stringdb.protein1 = stringdb.protein1.apply(lambda x: stringids.ix[x]['#Entrez_Gene_ID'])
-    stringdb.protein2 = stringdb.protein2.apply(lambda x: stringids.ix[x]['#Entrez_Gene_ID'])
-    stringdb.protein1 = stringdb.protein1.apply(lambda x: entrez.ix[x].Symbol)
-    stringdb.protein2 = stringdb.protein2.apply(lambda x: entrez.ix[x].Symbol)
+    stringdb.protein1 = stringdb.protein1.apply(lambda x: stringids.loc[x]['#Entrez_Gene_ID'])
+    stringdb.protein2 = stringdb.protein2.apply(lambda x: stringids.loc[x]['#Entrez_Gene_ID'])
+    stringdb.protein1 = stringdb.protein1.apply(lambda x: entrez.loc[x].Symbol)
+    stringdb.protein2 = stringdb.protein2.apply(lambda x: entrez.loc[x].Symbol)
     Gstring = nx.Graph()
     stringdb.T.apply(lambda x: Gstring.add_edge(x.protein1,x.protein2))
     
@@ -411,8 +411,8 @@ Y      Y  10316945   10544039"""
 
     ensembl = get_ensembl()
     ensembl = ensembl[ensembl.chr.isin(centromereshg38.index)]
-    ensembl['chrarm'] = ensembl.apply(lambda x: 'p' if x.stop < centromereshg38.ix[x.chr].left_base else
-                                  ('q' if x.start > centromereshg38.ix[x.chr].right_base else 'pq'),axis=1)
+    ensembl['chrarm'] = ensembl.apply(lambda x: 'p' if x.stop < centromereshg38.loc[x.chr].left_base else
+                                  ('q' if x.start > centromereshg38.loc[x.chr].right_base else 'pq'),axis=1)
     centromereshg38['chr_genes'] = ensembl.groupby('chr').size()
     centromereshg38['p_genes'] = ensembl[ensembl.chrarm=='p'].groupby('chr').size()
     centromereshg38['q_genes'] = ensembl[ensembl.chrarm=='q'].groupby('chr').size()
