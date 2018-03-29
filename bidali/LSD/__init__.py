@@ -13,8 +13,8 @@ from contextlib import redirect_stdout, redirect_stderr
 
 ## Defaults
 from ..config import config
-datadir = expanduser('~/Dropbiz/Lab/z_archive/Datasets/')
-processedDataStorage = expanduser('~/Data/LSDpy/')
+processedDataStorage = config['LSD']['cachedir']
+datadir = config['LSD']['privatedir']
 
 ## Utility functions
 def getLSDataset(name,**kwargs):
@@ -123,10 +123,10 @@ def retrieveSources(dataset_getfunction):
                     elif len(docline) == 3:
                         url = docline[2]
                         filename = docline[1]
-                    if not exists(processedDataStorage+filename):
+                    if not exists(os.path.join(processedDataStorage,filename)):
                         print('Downloading {}:'.format(filename))
                         if url.startswith('ftp://'):
-                            urlretrieve(url,processedDataStorage+filename,
+                            urlretrieve(url,os.path.join(processedDataStorage,filename),
                                         lambda x,y,z: print("\r[{}{}]".format('=' * int(50*x*y/z),
                                                                               ' ' * (50-int(50*x*y/z))),
                                                             end='',flush=True))
@@ -175,7 +175,7 @@ def cacheable(importer,exporter,extension='.cache'):
             cachefile = os.path.join(cachedir,'{}{}'.format(callhash,extension))
             # If cache, check if cache exists and how long it is allowed to exist in config
             timeMap = {'h': 'hours', 'd': 'days', 'w': 'weeks'}
-            cacheAllowedTime = config['LSD']['cache']
+            cacheAllowedTime = config['LSD']['cachetime']
             cacheAllowedTime = datetime.timedelta(
                 **{timeMap[t]:int(cacheAllowedTime[:-1]) for t in timeMap if cacheAllowedTime.endswith(t)}
             )

@@ -1,7 +1,8 @@
-#!/usr/bin/env python
-# fegnome => Fisher exact genome module
-# functions and classes for FE testing in relation to genomic context
+# -*- coding: utf-8 -*-
+"""fegnome:Fisher exact genome module
 
+Functions and classes for FE testing in relation to genomic context
+"""
 #TODO https://www.math.hmc.edu/funfacts/ffiles/10006.3.shtml -> proportional volume
 #TODO http://pythonhosted.org/gseapy/gseapy_example.html#prerank-example
 
@@ -11,22 +12,68 @@ from collections import namedtuple, OrderedDict
 import matplotlib.pyplot as plt
 import matplotlib.patches as ptch
 from scipy.stats import fisher_exact
-from bidali.LSD import get_centromeres
 
-centromereshg38 = get_centromeres()
+def genesetOverlap(geneset_a,geneset_b,universe,alternative='greater'):
+    """Calculate Fisher exact value for overlap of two genesets
+
+    Args:
+        geneset_a (set): Geneset A.
+        geneset_b (set): Geneset B.
+        universe (int): The size of the universe from which the genesets are taken.
+
+    Returns:
+        (oddsratio, p_value) result from scipy.stats.fisher_exact
+
+    Todos:
+        * output venn/contingency table, jaccard index
+        * write test with random model als negative control
+    """
+    # transform genesets to sets if not provided as such
+    if not isinstance(geneset_a,set): geneset_a = set(geneset_a)
+    if not isinstance(geneset_b,set): geneset_b = set(geneset_b)
+    # prepare contingency table
+    universe_over = universe - len(geneset_a | geneset_b)
+    geneseta_unique = len(geneset_a - geneset_b)
+    genesetb_unique = len(geneset_b - geneset_a)
+    common_genes = len(geneset_a & geneset_b)
+    # calculate fe score
+    return fisher_exact(
+        [
+            [ universe_over, geneseta_unique ],
+            [ genesetb_unique, common_genes ]
+        ],
+        alternative = alternative
+    )
 
 def enrichometer(ranks,genesUp,genesDown=None,universe=None,fexact_H1='two-sided',
                  reservoirR1=1.4,reservoirR2=None,fillingLinewidths=False,ax=None,title=None,
                  feminpv=.05,invertx=False,textrotation=0,fontsize=12,**kwargs):
-    """
-    ranks -> pd.Series with ranked statistic
-    if genesDown, is not provided, considered as unitary geneset
-    universe -> int or list
-     int that is the total number of genes in the universe
-     or list with all genes in the universe 
-    feminpv -> plot where enrichment is the strongest
-     provide as float, if fisher enrichment at strongest is not
-     significant in respect to value provided nothing is plotted
+    """Enrichometer plot
+
+    Args:
+        ranks (pd.Series): Series with ranked statistic.
+        genesUp (set): Up or differentially regulated genes.
+        genesDown (set): If not provided, considered as unitary geneset.
+        universe (int or list): Total number of genes in the universe
+            or list with all genes in the universe .
+        fexact_H1 (str): greater, less, or two-sided
+        reservoirR1 (float): Radius1 of reservoir
+        reservoirR2 (float): Radius2 of reservoir, default 0.8
+        fillingLinewidths (bool): Needs to be reimplemented, is not proportional
+        ax (ax): ax for plot.
+        title (str): Plot title.
+        feminpv (float): Plot where enrichment is the strongest;
+            provide as float, if fisher enrichment at strongest is not
+            significant in respect to value provided nothing is plotted
+        invertx (bool): Invert x axis.
+        textrotation (float): Text rotation.
+        fontsize (float): Font size.
+
+    Returns:
+        figure[, leadingEdgeGenes if feminpv]
+
+    Note:
+        *kwargs* are passed to `ax.eventplot`
     """
     #enrichometer settings
     axiscale = 10
@@ -107,8 +154,15 @@ def enrichometer(ranks,genesUp,genesDown=None,universe=None,fexact_H1='two-sided
     return (fig,leadingEdgeGene) if feminpv else fig
 
 def fenrichmentscore(ranks,genesUp,genesDown=None):
-    """
-    Calculate fe score for each position in the ranked list
+    """Calculate fe score for each position in the ranked list
+
+    Args:
+        ranks (pd.Series): Ranks for all genes.
+        genesUp (set): Up or differentially regulated genes.
+        genesDown (set): Optionally down regulated genes.
+
+    Returns:
+        pd.DataFrame with oddratio's and pvalue's.
     """
     genes = {g for g in genesUp if g in ranks.index}
     ranks = ranks.sort_values()
@@ -131,21 +185,34 @@ RankSumResult = namedtuple('RankSumResult',[
     'nulldistrosize',
     'fe_s','fe_p'])
         
-def rankSumProbability(ranks,geneset,alternative='greater',nulldistrosize=10000,nulldistrosave=True,universe=30000,verbose=False):
-    """
-    ranks: pd.Series
-    geneset: set
+def rankSumProbability(ranks, geneset, alternative='greater',
+                       nulldistrosize=10000, nulldistrosave=True, universe=30000, verbose=False):
+    """Probability of the ranksum
 
-    >>> from .tests.test_fegnome import testRanks, testGeneset
-    >>> rankSumProbability(testRanks,testGeneset,nulldistrosave=False) # doctest: +ELLIPSIS
-    RankSumResult(...)
+    Args:
+        ranks (pd.Series): Ranks of the genes.
+        geneset (set): Genes for the rank sum.
+        alternative (str): greater or less.
+        nulldistrosize (int): Size of the null distribution to calculate.
+        nulldistrosave (bool): Option to cache nulldistro for a given geneset size and ranks.
+        universe (int): Size of the genes universe.
+        verbose (bool): Extra info.
+
+    Returns:
+        namedtuple RankSumResult
+
+    Example:
+        >>> from .tests.test_fegnome import testRanks, testGeneset
+        >>> rankSumProbability(testRanks,testGeneset,nulldistrosave=False) # doctest: +ELLIPSIS
+        RankSumResult(...)
     """
     realsetlen = len(geneset)
     setlen = ranks.index.isin(geneset).sum()
     if not setlen: return RankSumResult(None,realsetlen,setlen,None,None,None,None)
     ranksum = ranks[ranks.index.isin(geneset)].sum()
     if nulldistrosave:
-        import pickle,hashlib,LSD
+        import pickle,hashlib
+        from bidali import LSD
         hashindex = hashlib.md5(str(tuple(sorted(ranks))).encode()).hexdigest()
         try: nulldistros = pickle.load(open(LSD.processedDataStorage+'ranklogsum_nulldistros.pickle','rb'))
         except FileNotFoundError: nulldistros = {}

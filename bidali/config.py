@@ -1,9 +1,18 @@
-# Bidali configuration
+# -*- coding: utf-8 -*-
+"""Bidali configuration
+
+This module organizes the configuration for the general bidali package and
+the LSD subpackage.
+
+Todo:
+    * Give example symlinking privatedir ln -s ~/Dropbiz/Lab/z_archive/Datasets ~/LSData/private
+"""
+
 import configparser, os
 configFileOptions = [
     'bidali.cfg', # in current working dir
     os.path.expanduser('~/.bidali.cfg'),
-    '/etc/bidali.cfg'
+    '/usr/local/etc/bidali.cfg'
 ]
 
 # Default configuration
@@ -13,8 +22,9 @@ config['bidali'] = {
 }
 
 config['LSD'] = {
-    'cache': '4w', #supports w[eeks], d[ays] or h[ours]
-    'cachedir': os.path.expanduser('~/LSData/')
+    'cachetime': '4w', #supports w[eeks], d[ays] or h[ours]
+    'cachedir': os.path.expanduser('~/LSData/cache/'),
+    'privatedir': os.path.expanduser('~/LSData/private/')
 }
 
 # Read configuration file

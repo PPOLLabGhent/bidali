@@ -12,7 +12,7 @@
 Copy paste below line by line:
 
      sudo pip3 install virtualenv # asks your password
-     mkdir -p ~/{repos,Data/LSDpy} && cd ~/repos
+     mkdir -p ~/{repos,LSData/cache} && cd ~/repos
      git clone https://github.com/beukueb/bidali.git
      cd ~/repos/bidali
      virtualenv velsp

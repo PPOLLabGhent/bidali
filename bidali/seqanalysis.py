@@ -71,12 +71,21 @@ class Genome:
                 yield (ch,slice(i,i+windowSize))
 
 def loadHumanGenome():
+    """
+    Loads the GRCh38 human genome
+
+    Source: ftp://ftp.ensembl.org/pub/release-91/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.chromosome.?.fa.gz
+    Source: ftp://ftp.ensembl.org/pub/release-91/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.chromosome.??.fa.gz
+
+    TODO: implement with retrieveSources decoration
+    """
     from glob import glob
     files = glob('/home/christophe/Data/Genomes/chroms/chr??.fa')
     files += glob('/home/christophe/Data/Genomes/chroms/chr?.fa')
     chromosomes = []
     for f in files:
-        f = open(f).readlines()
+        with open(f) as fh:
+            f = fh.readlines()
         chromosomes.append(DNA(f.pop(0).strip()[1:],''.join([l.strip() for l in f])))
     return Genome('human','GRCh38',chromosomes)
 

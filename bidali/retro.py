@@ -32,8 +32,8 @@ def prepareDesign(metadata,design,reflevels=None,RReturnOnly=True):
         )
         for col in metadata
     }
-    metadata_r = ro.r['data.frame'](**metacols_r)
-    design_r = ro.r['model.matrix'](ro.r.formula(design),data=metadata_r)
+    metadata_r = base.data_frame(**metacols_r)
+    design_r = stats.model_matrix(ro.r.formula(design),data=metadata_r)
     design_r.colnames = ro.StrVector(
         [c.replace(':','.') for c in ro.r.colnames(design_r)]
     ) # resolves naming issue when using interaction factors in design
@@ -68,7 +68,7 @@ def prepareContrasts(design_r,contrasts, RReturnOnly = True):
         )
         return contrasts_r, contrasts_p
 
-def DEA(counts,design_r,contrasts=None):
+def DEA(counts,design_r,contrasts=None,adjust_method='BH'):
     """
     contrasts needs to be a dictionary with string keys and values to be used as design contrasts or 
     a list of int values to be used as design coefficients
@@ -106,7 +106,7 @@ def DEA(counts,design_r,contrasts=None):
     results = OrderedDict()
     for res in contrasts:
         result_r = limma.topTable(
-            fit_contrasts_r,coef=contrasts[res],n=len(counts)
+            fit_contrasts_r,coef=contrasts[res],n=len(counts),adjust_method=adjust_method
         )
         results[res] = pandas2ri.ri2py(result_r)
         results[res].index = ro.r.rownames(result_r)

@@ -42,9 +42,18 @@ class Expan:
         default_kwargs.update(kwargs)
         counts_kwargs.update(default_kwargs)
         metadata_kwargs.update(default_kwargs)
-        # Read tables
+        # Prepare tables
         self.counts = pd.read_table(counts,**counts_kwargs)
-        self.metadata = pd.read_table(metadata,**metadata_kwargs)
+        ## Prepare metadata
+        if isinstance(metadata,str):
+            self.metadata = pd.read_table(metadata,**metadata_kwargs)
+        else: # prepare metadata from counts columns
+            if 'rename_cols' in metadata:
+                rename_cols = metadata.pop('rename_cols')
+                self.counts.columns = [rename_cols(c) for c in self.counts.columns]
+            self.metadata = pd.DataFrame({
+                m:[metadata[m](c) for c in self.counts.columns] for m in metadata
+            }, index = self.counts.columns)
         if len(self.metadata) != sum(self.counts.columns.isin(self.metadata.index)):
             raise Exception('count column names and metatada row names need to match!')
         # Set column order of counts, to row order of metadata
@@ -117,6 +126,48 @@ class Expan:
         self.results, self.counts_norm = retro.DEA(self.counts_fltd, self._robjects['design'], self.contrasts)
         for k in self.results:
              self.results[k]['Gene name'] = self.annotations['Gene name']
+
+    def gsea(self, genesets = None, exclude_results = {}):
+        """Geneset enrichment analysis
+
+        Expan.exdif should have already been executed. The gene exdif results will be deduplicated.
+        As such, genes that have multiple locations in the genome will only maintain there best result
+        in the geneset enrichment analysis. This creates a small bias for such genes.
+
+        Args:
+            genesets (dict): Should be a dict with string keys designating the geneset names,
+                and gene list values containing all the geneset members. If not provided all
+                MSigDB geneset collections are used.
+            exclude_results (set): A set of exdif results for which the gsea analysis is not required.
+        Returns:
+            gsea result
+        """
+        from bidali.retro import genesets2indices_r, fgsea
+        if genesets:
+            gscollections = {'custom': genesets}
+        else:
+            from bidali import LSD
+            gscollections = LSD.get_msigdb6()
+        # deduplicate gene exdif results
+        results_deduplicated = {
+            r:self.results[r][~self.results[r]['Gene name'].duplicated()]
+            for r in self.results if r not in exclude_results
+        }
+        self.gsea_results = {}
+        for r in results_deduplicated:
+            geneLabels = results_deduplicated[r]['Gene name'].as_matrix()
+            gscollections_r = {
+                gsc:genesets2indices_r(gscollections[gsc], geneLabels)
+                for gsc in gscollections
+            }
+            self.gsea_results[r] = {
+                gsc:fgsea(
+                    gscollections_r[gsc],
+                    results_deduplicated[r].set_index('Gene name').t,
+                    minSize = 15
+                )
+                for gsc in gscollections   
+            }
 
     def exporter(self, location):
         """Export expression analysis object
