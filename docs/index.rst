@@ -25,5 +25,8 @@ Module documentation
 .. automodule:: bidali.LSD
    :members:
 
+.. automodule:: bidali.expan
+   :members:
+      
 .. automodule:: bidali.fegnome
    :members:

@@ -4,15 +4,16 @@
 Defines the Expan object for all your expression analysis needs.
 Relies under the hood on the retro module and R packages.
 
->>> from bidali.expan import Expan
->>> expan = Expan(                                                                                                      
-...   counts = '/home/christophe/Dropbiz/Basecamp/BRIP1/2016/2016_008_DDR_RNA sequencing/raw data-results/2015_TMPYP4_SVH_RSEMcounts_pp.csv',
-...   metadata = '/home/christophe/Dropbiz/Basecamp/BRIP1/2016/2016_008_DDR_RNA sequencing/raw data-results/2015_TMPYP4_metadata.csv'
-... )
->>> expan.designator(design = '~batch+treatment+cellline', reflevels = {'batch':'seq1','cellline':'IMR32','treatment':'control'})
->>> expan.exdif(contrasts = [4, 5], countfilter = 1)
->>> brip1 = expan['BRIP1']
->>> brip1.plotCounts('cellline','treatment')
+Example:
+    >>> from bidali.expan import Expan
+    >>> expan = Expan(                                                                                                      
+    ...   counts = '/home/christophe/Dropbiz/Basecamp/BRIP1/2016/2016_008_DDR_RNA sequencing/raw data-results/2015_TMPYP4_SVH_RSEMcounts_pp.csv',
+    ...   metadata = '/home/christophe/Dropbiz/Basecamp/BRIP1/2016/2016_008_DDR_RNA sequencing/raw data-results/2015_TMPYP4_metadata.csv'
+    ... )
+    >>> expan.designator(design = '~batch+treatment+cellline', reflevels = {'batch':'seq1','cellline':'IMR32','treatment':'control'})
+    >>> expan.exdif(contrasts = [4, 5], countfilter = 1)
+    >>> brip1 = expan['BRIP1']
+    >>> brip1.plotCounts('cellline','treatment')
 """
 import pandas as pd
 import numpy as np
@@ -20,7 +21,8 @@ from bidali import retro
 from collections import OrderedDict
 
 class Expan:
-    """
+    """Expression analysis class
+
     This class is the starting point for a bidali expression analysis workflow.
     """
 
@@ -30,12 +32,20 @@ class Expan:
                  counts_kwargs={}, metadata_kwargs={}, **kwargs):
         """Expression analysis class
 
-        Expects the filename for the counts and metadata table.
-        Common counts and metadata pd.read_table arguments can 
-        be provided as extra key word arguments. Different arguments
-        for pd.read_table need to be specified in the counts_kwargs
-        and metadata_kwargs dictionaries. The default index col is 0
-        and the default sep is ','. 
+        Args:
+            counts (str): The filename for the counts table.
+            metadata (str): The filename for the metadata table.
+            export (str): Export location. Not implemented yet!
+            annotations (pd.DataFrame): Annotations for the counts
+                gene identifiers. Default loads biomart table.
+            annotatedOnly (bool): Only analyze genes that have annotation.
+            counts_kwargs (dict):
+            metadata_kwargs (dict):
+                Common counts and metadata pd.read_table arguments can 
+                be provided as extra key word arguments. Different arguments
+                for pd.read_table need to be specified in the counts_kwargs
+                and metadata_kwargs dictionaries. The default index col is 0
+                and the default sep is ','. 
         """
         # Include common kwargs in counts and metadata specific kwargs
         default_kwargs = {'index_col':0,'sep':','}
@@ -99,7 +109,12 @@ class Expan:
     def designator(self, design, reflevels):
         """Prepare experimental design
 
-        e.g. reflevels = {'treatment':'SHC002_nox','rep':'rep1'}
+        Args:
+            design (str): The design of the experiment, e.g. '~treatment+batch'
+            reflevels (dict): The reference level for each factor of the metadata
+
+        Example:
+            reflevels = {'treatment':'SHC002_nox','rep':'rep1'}
         """
         self.design = design
         self._robjects['design'], self.designmatrix = retro.prepareDesign(
@@ -112,11 +127,20 @@ class Expan:
 
         Runs differential expression workflow
 
-        e.g. contrasts = {'c1': 1, 'c2': 2} if coefs == True 
-        else contrasts = {
-          'c1': 'treatmentSHC002_dox - treatmentTBX2sh25_dox','treatmentSHC002_dox - treatmentTBX2sh27_dox',
-          'c2': 'treatmentSHC002_nox - treatmentTBX2sh25_nox','treatmentSHC002_nox - treatmentTBX2sh27_nox'
-        }
+        Args:
+            contrasts (list or dict): If design coefficients suffice provide
+                a list of the design column numbers of interest, else provide
+                a dict with contrast name and contrast constructor string.
+            countfilter (int): Mininum average number of reads per sample.
+                Genes that do not meet this requirement are filtered.
+            quantro (bool): Include quantro analysis. Not implemented yet!
+
+        Examples:
+            >>> contrasts = [1,2]
+            >>> contrasts = {
+            ...   'c1': 'treatmentSHC002_dox - treatmentTBX2sh25_dox','treatmentSHC002_dox - treatmentTBX2sh27_dox',
+            ...   'c2': 'treatmentSHC002_nox - treatmentTBX2sh25_nox','treatmentSHC002_nox - treatmentTBX2sh27_nox'
+            ...  }
         """
         self.contrasts = contrasts
         self.counts_fltd = (
@@ -188,6 +212,13 @@ class Expan:
     def convert_excell_to_csv(filename,sheet_name=0):
         """
         Convenience function to e.g. convert an metadata excell table to a csv equivalent
+
+        Args:
+            filename (str): Excell filename.
+            sheet_name (int or str): Either sheet number or sheet name.
+
+        Returns:
+            filename of converted table
         """
         newFilename = filename[:filename+rindex('.')]+'.csv'
         pd.read_excel(filename,sheet_name=sheet_name).to_csv(newFilename)
@@ -222,11 +253,16 @@ class GeneResult:
     def calcKD(self, groupingCol, knockdownCol, knockdownControl = 'control'):
         """Calculate knockdown
 
-        groupingCol => grouping column name in analysis metadata
-        knockdownCol => kd column name in analysis metadata
-         within that column knockdownControl has to be the value of the control condition
+        Args:
+            groupingCol (str): Grouping column name in analysis metadata.
+            knockdownCol (str): KD column name in analysis metadata.
+            knockdownControl (str): Within knockdownCol the value of the control condition
 
-        Missing values should be provided as np.NaN
+        Returns:
+            float
+
+        Note:
+            * Missing values should be provided as np.NaN
         """
         treatments = {t for t in self.parent.metadata[knockdownCol] if t != knockdownControl}
         kd = self.counts.groupby(self.parent.metadata[groupingCol]
