@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name = 'bidali',
-      version = '0.1.11',
+      version = '0.1.12',
       description = 'Biological Data Analysis Library',
       url = 'https://github.com/beukueb/bidali',
       author = 'Christophe Van Neste',
@@ -20,11 +20,14 @@ setup(name = 'bidali',
           'requests',
           'seaborn',
           'setuptools',
-          'rpy2',
           'matplotlib',
           'plumbum',
           'lifelines'
       ],
+      extras_require = {
+          'retro': ['rpy2'],
+          'documentation': ['Sphinx']
+      },
       zip_safe = False,
       #entry_points = {
       #    'console_scripts': ['getLSDataset=LSD.command_line:main'],

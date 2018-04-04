@@ -17,7 +17,7 @@ Copy paste below line by line:
      cd ~/repos/bidali
      virtualenv velsp
      . velsp/bin/activate
-     pip install .
+     pip install .[retro]
      deactivate
 
 The bidali package can now be used. The following example illustrates preparing
