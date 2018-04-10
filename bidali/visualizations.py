@@ -227,3 +227,17 @@ def draw_cellcycle(annotations,totalCompartments=100,phases=OrderedDict([('G1',0
                                                xytransform(innerRadius,compartments[p])]),color='r',lw=3))
         ax.annotate(','.join(grp.index),xytransform((1+padding) if len(grp) == 1 else innerAnnotRing,compartments[p]),va='center',ha='center',rotation=180-compartments[p])
     return ax
+
+## Utilities
+def labelcolor_matching_backgroundcolor(rgba,brightnessThreshold=123):
+    """Return readable text color given background color.
+    Uses the w3 suggested formula: https://www.w3.org/TR/AERT/#color-contrast.
+
+    Args:
+        rgba (int,int,int,int): Color tuple.
+
+    Returns:
+        rgba tuple of suitable front color (black or white)
+    """
+    brightness = (255*rgba[0]*299 + 255*rgba[0]*587 + 255*rgba[0]*114)/1000
+    return (0,0,0,1) if brightness > brightnessThreshold else (1,1,1,1)

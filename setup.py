@@ -8,6 +8,7 @@ setup(name = 'bidali',
       author_email = 'christophe.vanneste@ugent.be',
       license = 'MIT',
       packages = find_packages(),
+      python_requires='>3.6',
       install_requires = [
           #Generated with `pipreqs .` and then moved here from requirements.txt
           'networkx',
