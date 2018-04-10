@@ -13,7 +13,7 @@ Copy paste below line by line:
 
      sudo pip3 install virtualenv # asks your password
      mkdir -p ~/{repos,LSData/cache} && cd ~/repos
-     git clone https://github.com/beukueb/bidali.git
+     git clone https://github.com/dicaso/bidali.git
      cd ~/repos/bidali
      virtualenv velsp
      . velsp/bin/activate

@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(name = 'bidali',
       version = '0.1.12',
       description = 'Biological Data Analysis Library',
-      url = 'https://github.com/beukueb/bidali',
+      url = 'https://github.com/dicaso/bidali',
       author = 'Christophe Van Neste',
       author_email = 'christophe.vanneste@ugent.be',
       license = 'MIT',
