@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from bidali import LSD
 from bidali.LSD import retrieveSources,cacheableTable,processedDataStorage,datadir
-import gzip, pandas as pd
+import os, gzip, pandas as pd
 from io import TextIOWrapper, StringIO
 from urllib.parse import parse_qsl
 
@@ -45,7 +45,7 @@ def get_ensemblGeneannot():
     import gffutils
     try: db = gffutils.FeatureDB(processedDataStorage+'Homo_sapiens.GRCh38.88.sqlite3')
     except ValueError:
-        if not exists(processedDataStorage+'Homo_sapiens.GRCh38.88.gtf.gz'):
+        if not os.path.exists(processedDataStorage+'Homo_sapiens.GRCh38.88.gtf.gz'):
             raise FileNotFoundError
         db = gffutils.create_db(processedDataStorage+'Homo_sapiens.GRCh38.88.gtf.gz',
                                 processedDataStorage+'Homo_sapiens.GRCh38.88.sqlite3',
