@@ -1,4 +1,8 @@
-#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""ensembl
+
+Reference: https://www.ensembl.org/
+"""
 from bidali import LSD
 from bidali.LSD import retrieveSources,cacheableTable,processedDataStorage,datadir
 import os, gzip, pandas as pd
