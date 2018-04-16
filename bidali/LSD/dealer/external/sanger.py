@@ -6,7 +6,7 @@ Reference: http://www.sanger.ac.uk/
 from bidali import LSD
 import os, gzip, pandas as pd
 
-@retrieveSources
+@LSD.retrieveSources
 def get_census():
     """Cancer census genes
 
