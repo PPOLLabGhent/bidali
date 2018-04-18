@@ -1,23 +1,24 @@
 # BIological Data Analysis Library - Documentation
 <img title="bidali logo" src="bidali_logo.svg" width="200">
 
+## Requirements
+
+- Install python3 from https://www.python.org/downloads/ (version 3.6.2)
+- Install git from https://git-scm.com/downloads
+- https://virtualenvwrapper.readthedocs.io/en/latest/
+ 
 ## Installation
 
 ### Mac OS X
 
-- Install python3 from https://www.python.org/downloads/ (version 3.6.2)
-- Install git from https://git-scm.com/downloads
-- open `Terminal`
+Open `Terminal` and copy paste below line by line:
 
-Copy paste below line by line:
-
-     sudo pip3 install virtualenv # asks your password
      mkdir -p ~/{repos,LSData/cache} && cd ~/repos
      git clone https://github.com/dicaso/bidali.git
-     cd ~/repos/bidali
-     virtualenv velsp
-     . velsp/bin/activate
-     pip install .[retro]
+     BIDADIR=~/repos/bidali
+     mkvirtualenv -a $BIDADIR -i ipython -i twine -i Sphinx \
+                  -r $BIDADIR/requirements.txt bidali
+     python setup.py test # runs all the tests
      deactivate
 
 The bidali package can now be used. The following example illustrates preparing

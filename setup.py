@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name = 'bidali',
-      version = '0.1.12',
+      version = '0.1.13',
       description = 'Biological Data Analysis Library',
       url = 'https://github.com/dicaso/bidali',
       author = 'Christophe Van Neste',
@@ -23,7 +23,8 @@ setup(name = 'bidali',
           'setuptools',
           'matplotlib',
           'plumbum',
-          'lifelines'
+          'lifelines',
+          'tzlocal'
       ],
       extras_require = {
           'retro': ['rpy2'],
