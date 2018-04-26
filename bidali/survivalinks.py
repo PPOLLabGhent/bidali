@@ -42,7 +42,9 @@ def geneImpactSurvival(gene,expressions,metadata,groupingByQuantile=0.5,grouping
         result = (lastlow-lasthigh,results.p_value)
     else:
         result = (round(lastlow-lasthigh,rounding),round(results.p_value,rounding))
-    if plot: return result,ax
+    if plot:
+        ax.set_ylim((0,1))
+        return result,ax
     else: return result
 
 def geneCombinationImpactSurvival(genes,expressions,metadata,groupingByQuantile=0.5,
@@ -67,6 +69,7 @@ def geneCombinationImpactSurvival(genes,expressions,metadata,groupingByQuantile=
         except NameError: ax = kmf.plot()
 
     ax.set_title(':'.join(genes))
+    ax.set_ylim((0,1))
     return lastvalues
 
     #results = logrank_test(metadata[metacensorcol][groupHigh], metadata[metacensorcol][~groupHigh],
@@ -93,7 +96,8 @@ def subsetsImpactSurvival(subsets,metadata,metacensorcol="overall_survival",
         except NameError: ax = kmf.plot()
 
     if title: ax.set_title(title)
-    return lastvalues
+    ax.set_ylim((0,1))
+    return lastvalues, ax
 
 # 2-way survival curves
 def twoGeneSurvivalPlot(g1,g2,expressionData,metadata,ax=None):

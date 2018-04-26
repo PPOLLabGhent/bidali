@@ -16,7 +16,7 @@ Open `Terminal` and copy paste below line by line:
      mkdir -p ~/{repos,LSData/cache} && cd ~/repos
      git clone https://github.com/dicaso/bidali.git
      BIDADIR=~/repos/bidali
-     mkvirtualenv -a $BIDADIR -i ipython -i twine -i Sphinx \
+     mkvirtualenv -a $BIDADIR -i ipython -i rpy2 -i twine -i Sphinx \
                   -r $BIDADIR/requirements.txt bidali
      python setup.py test # runs all the tests
      deactivate
