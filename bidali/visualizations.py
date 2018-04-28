@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Plotting imports
-import matplotlib
-matplotlib.use("TkAgg")
+import matplotlib as mpl
+mpl.use("TkAgg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as ptch
 import seaborn as sns
@@ -104,20 +104,26 @@ def drawCNAcircos(cnaPositions,cnaTotal=False,chrRange=None,sortPositions=True,
     return fig
 
 def curvedHeatPlot(dataframe,columns,topDisplayed=10,cellwidth=.2,cellheight=.1,cmap='hot_r',
-                   headingTextSize=14,curveLabels=True,filename=None):
+                   vmin=None,vmax=None,headingTextSize=14,curveLabels=True,filename=None):
     """
     >>> curvedHeatPlot(Mock(),['col1','col2']) # doctest: +ELLIPSIS
     <matplotlib.figure.Figure ...>
     """
     from itertools import count
+    # set colormap
+    vmin = vmin or dataframe[columns].min().min()
+    vmax = vmax or dataframe[columns].max().max()
+    norm = mpl.colors.Normalize(vmin=vmin,vmax=vmax)
     cmap = plt.get_cmap(cmap)
+    fill_color = lambda x: cmap(norm(x))
+    # positions top displayed
     topDisplayed_l_pos,topDisplayed_r_pos = topDisplayed,len(dataframe)-topDisplayed
     def curvedHeat(x,iterposition,ax,columns=columns):
         position = next(iterposition)
         if position < topDisplayed_l_pos:
             for c in columns:
                 ax.add_patch(ptch.Rectangle((-1+cellwidth*columns.index(c),(topDisplayed_l_pos - position - 1)*cellheight),
-                                            width=cellwidth,height=cellheight,color=cmap(x[c])))
+                                            width=cellwidth,height=cellheight,color=fill_color(x[c])))
                 if position == 0:
                     ax.annotate('{:.2f}'.format(x[c]),
                                 (-1+cellwidth*columns.index(c)+cellwidth/2,((topDisplayed_l_pos - position - 1)*cellheight)+.05),
@@ -126,7 +132,7 @@ def curvedHeatPlot(dataframe,columns,topDisplayed=10,cellwidth=.2,cellheight=.1,
         elif position >= topDisplayed_r_pos:
             for c in columns:
                 ax.add_patch(ptch.Rectangle((1-cellwidth-(cellwidth*columns.index(c)),(position-topDisplayed_r_pos)*cellheight),
-                                            width=cellwidth,height=cellheight,color=cmap(x[c])))
+                                            width=cellwidth,height=cellheight,color=fill_color(x[c])))
                 if position == 57:
                     ax.annotate('{:.2f}'.format(x[c]),
                                 (1-cellwidth*columns.index(c)-cellwidth/2,((position-topDisplayed_r_pos)*cellheight)+.05),
@@ -136,7 +142,7 @@ def curvedHeatPlot(dataframe,columns,topDisplayed=10,cellwidth=.2,cellheight=.1,
             startAngle = 180+(180*(position - topDisplayed)/(topDisplayed_r_pos - topDisplayed))
             endAngle = 180+(180*(1+position - topDisplayed)/(topDisplayed_r_pos - topDisplayed))
             for c in columns:
-                ax.add_patch(ptch.Wedge((0,0),1-(cellwidth*columns.index(c)),startAngle,endAngle,cellwidth,color=cmap(x[c])))
+                ax.add_patch(ptch.Wedge((0,0),1-(cellwidth*columns.index(c)),startAngle,endAngle,cellwidth,color=fill_color(x[c])))
             if curveLabels: ax.annotate(x.name,(np.pi*(startAngle+endAngle)/360,1),xycoords='polar',
                                         ha='right' if position < len(dataframe)/2 else 'left',va='top',
                                         rotation=(startAngle+endAngle)/2 + (180 if position < len(dataframe)/2 else 0))
