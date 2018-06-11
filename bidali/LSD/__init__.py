@@ -77,11 +77,6 @@ class IntegratedDataset(object):
                 self.data.data_vars[datatablename].to_pandas().to_csv(b,sep=csvsep,decimal=csvdec)
                 b.seek(0)
                 zdir.writestr('{}.csv'.format(datatablename),b.read())
-                #with zdir.open('{}.csv'.format(datatablename), mode='w') as zipf:
-                #    zipf.write(b.read().encode())
-                # Set touch time to current time
-                #zi = zdir.getinfo('{}.csv'.format(datatablename))
-                #zi.date_time = zipfile.time.localtime()[:6]
                 
     @staticmethod
     def load(filename):
