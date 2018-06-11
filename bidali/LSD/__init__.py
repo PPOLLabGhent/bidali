@@ -71,6 +71,7 @@ class IntegratedDataset(object):
             filename (str): Save location. Extension '.zip' will be added.
         """
         import zipfile, io
+        if filename.endswith('.zip'): filename = filename[:-4]
         with zipfile.ZipFile('{}.zip'.format(filename), mode='w') as zdir:
             for datatablename in self.data.data_vars:
                 b = io.StringIO()
@@ -78,15 +79,24 @@ class IntegratedDataset(object):
                 b.seek(0)
                 zdir.writestr('{}.csv'.format(datatablename),b.read())
                 
-    @staticmethod
-    def load(filename):
+    @classmethod
+    def load(cls,filename,csvsep=',',csvdec='.'):
         """Load IntegratedDataset from disk zip folder.
 
         Args:
             filename (str): Save location. Extension '.zip' will be added.
         """
-        raise NotImplementedError('serializing and loading not yet working')
-        return xr.open_dataset(filename)
+        import zipfile, io
+        if filename.endswith('.zip'): filename = filename[:-4]
+        with zipfile.ZipFile('{}.zip'.format(filename), mode='r') as zdir:
+            tables = {
+                zf.filename[:-4]:pd.read_csv(
+                    io.TextIOWrapper(zdir.open(zf)),
+                    sep=csvsep, decimal=csvdec, index_col=0
+                )
+                for zf in zdir.infolist()
+            }
+        return cls(**tables)
 
     # def save_netcdf(self, filename):
     #     """Save IntegratedDataset to disk
