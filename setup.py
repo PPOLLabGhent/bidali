@@ -15,7 +15,6 @@ setup(name = 'bidali',
           'biomart',
           'pandas',
           'xarray',
-          'netCDF4',
           'gffutils',
           'scipy',
           'numpy',
@@ -30,6 +29,8 @@ setup(name = 'bidali',
       ],
       extras_require = {
           'retro': ['rpy2'],
+          #for netCDF4 output, depends on: libnetcdf-dev libhdf5-dev
+          'netcdf': ['netCDF4'],
           'documentation': ['Sphinx']
       },
       zip_safe = False,

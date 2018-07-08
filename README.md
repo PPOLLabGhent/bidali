@@ -6,7 +6,11 @@
 - Install python3 from https://www.python.org/downloads/ (version 3.6.2)
 - Install git from https://git-scm.com/downloads
 - https://virtualenvwrapper.readthedocs.io/en/latest/
- 
+
+### netCDF4 output
+
+- sudo apt-get install libnetcdf-dev libhdf5-dev
+
 ## Installation
 
 ### Mac OS X

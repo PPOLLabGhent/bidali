@@ -27,6 +27,12 @@ config['LSD'] = {
     'privatedir': os.path.expanduser('~/LSData/private/')
 }
 
+config['plotting'] = {
+    'mpl_backend': 'TkAgg',
+    'interactive': 'yes',
+    'use_seaborn_bug_workaround': 'no'
+}
+
 # Read configuration file
 for configFile in configFileOptions:
     if os.path.exists(configFile):
