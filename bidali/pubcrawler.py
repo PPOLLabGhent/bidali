@@ -17,6 +17,7 @@ class CIDcounter:
     def next(self,increment):
         if increment:
             self.value = next(self.counter)
+        else: next(self.counter) #this step ensures a CID == TID for a new reference concept
         return self.value
 
 def makeCIDandTID(df,conceptCol='symbol',aliasCol='alias'):
@@ -97,9 +98,5 @@ def get_gene_dictionary():
     print('Original columns',gn.columns)
     gn = gn[['hgnc_id','symbol','alias','uniprot_ids']].copy()
     print('Columns ketp:',gn.columns)
-    gn = unfoldDFlistColumn(gn,'alias')
-    gn.reset_index(inplace=True,drop=True)
-    gn.index.name = 'TID' #term id
-    c = CIDcounter()        
-    gn.insert(0, 'CID', (~gn.symbol.duplicated()).apply(c.next)) #need to work with `not` duplicated column!
+    gn = makeCIDandTID(gn)
     return gn
