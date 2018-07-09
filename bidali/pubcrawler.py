@@ -19,8 +19,27 @@ class CIDcounter:
             self.value = next(self.counter)
         return self.value
 
+def makeCIDandTID(df,conceptCol='symbol',aliasCol='alias'):
+    """Make text mining dictionary with TID and CID set
+
+    According to Adil Salhi's text mining requirements.
+
+    Args:
+        df (pd.DataFrame): Dataframe to transform.
+        conceptCol (str): Column name of main concept/symbol.
+        aliasCol (str): Column name where all aliases for the concept
+          are gathered in a list, including the concept itself as first list member.
+    """
+    from bidali.util import unfoldDFlistColumn
+    df = unfoldDFlistColumn(df,aliasCol)
+    df.reset_index(inplace=True,drop=True)
+    df.index.name = 'TID' #term id
+    c = CIDcounter()        
+    df.insert(0, 'CID', (~df[conceptCol].duplicated()).apply(c.next)) #need to work with `not` duplicated column!
+    return df
+
 ## get icd9 info
-def get_icd9info(icd9code,type='disease'):
+def get_icd9info(icd9code,type='disease',includeShortName=True):
     """Get info related to icd9code
 
     Info:
@@ -31,7 +50,8 @@ def get_icd9info(icd9code,type='disease'):
 
     Args:
         icd9code (str): Code to query.
-        type (option): `disease` or `procedure`
+        type (option): `disease` or `procedure`.
+        includeShortName: Also include the short name in output.
     """
     import requests, json
     if type == 'disease':
@@ -39,6 +59,7 @@ def get_icd9info(icd9code,type='disease'):
     elif type == 'procedure':
         url = 'https://clinicaltables.nlm.nih.gov/api/icd9cm_sg/v3/search?terms={term}'
     else: raise Exception('Wrong type specified, should be disease or procedure, not',type)
+    if includeShortName: url+='&ef=short_name'
     r = requests.get(url.format(term = icd9code))
     return json.loads(r.content)
     
@@ -68,7 +89,7 @@ def get_gene_dictionary():
     from bidali.util import unfoldDFlistColumn
     gn = ensembl.get_genenames()
     gn['alias'] = gn.T.apply(
-        lambda x: [x.symbol] + #optionally add other names such as protein names here
+        lambda x: [x.symbol, x['name']] + #optionally add other names such as protein names here
         (
             x.alias_symbol.split('|') if x.alias_symbol is not np.nan else []
         )
