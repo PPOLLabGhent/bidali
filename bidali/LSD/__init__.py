@@ -467,7 +467,7 @@ def storeDatasetLocally(dataset_getfunction):
 
 ## Datasets
 ### References/annotations
-from .dealer.external.ensembl import get_ensembl, get_ensemblGeneannot
+from .dealer.ensembl import get_ensembl, get_ensemblGeneannot
 
 @retrieveSources
 def get_liftover(frm=19,to=38):

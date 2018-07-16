@@ -29,7 +29,7 @@ The bidali package can now be used. The following example illustrates preparing
 the neuroblastoma 39 cell line data ready for use in R:
 
     . ~/repos/bidali/velsp/bin/activate
-    python -m LSD --list LSD.dealer.external.celllines.get_NB39
+    python -m LSD --list LSD.dealer.celllines.get_NB39
 
 To update the package, and get new available datasets:
 

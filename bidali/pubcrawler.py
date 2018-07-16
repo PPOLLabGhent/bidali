@@ -66,7 +66,7 @@ def get_icd9info(icd9code,type='disease',includeShortName=True):
     
 # Dictionary functions
 def get_biomart_gene_dictionary():
-    from bidali.LSD.dealer.external.ensembl import get_biomart
+    from bidali.LSD.dealer.ensembl import get_biomart
     from bidali.genenames import fetchAliases
     bm = get_biomart(atts=[
         'ensembl_gene_id',

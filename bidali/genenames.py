@@ -8,7 +8,7 @@ from urllib.request import Request,urlopen
 import json
 
 # Get the whole table
-from bidali.LSD.dealer.external.ensembl import get_genenames
+from bidali.LSD.dealer.ensembl import get_genenames
 
 # genenames API
 def fetchGenenamesJSON(symbol,alias=False):

@@ -71,7 +71,7 @@ class Expan:
         self._robjects = {} #dict to save private R objects
         if annotations is not None: self.annotations = annotations
         else:
-            from bidali.LSD.dealer.external.ensembl import get_biomart
+            from bidali.LSD.dealer.ensembl import get_biomart
             biomart = get_biomart()
             biomart = biomart[~biomart['Gene stable ID'].duplicated()]
             biomart = biomart.set_index('Gene stable ID')
