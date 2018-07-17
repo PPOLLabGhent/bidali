@@ -76,10 +76,3 @@ def get_mouseEnsemblSet():
     transcripts['GENE_ID'] = transcripts.attribute.apply(lambda x: parse_qsl(x)[1][1].split(':')[1])
     transcripts.set_index('TRANSCRIPT_ID',inplace=True)
     return (genes,transcripts)
-
-@retrieveSources
-def get_genenames():
-    """
-    Source: ftp://ftp.ebi.ac.uk/pub/databases/genenames/new/tsv/non_alt_loci_set.txt
-    """
-    return pd.read_table(processedDataStorage+'non_alt_loci_set.txt', low_memory = False)#, index_col='GeneID')

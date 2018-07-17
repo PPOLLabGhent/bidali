@@ -86,9 +86,9 @@ def get_gene_dictionary():
     """Gene symbol dictionary.
     Uses genenames.org data.
     """
-    from bidali.LSD.dealer.external import ensembl
+    from bidali.LSD.dealer import genenames
     from bidali.util import unfoldDFlistColumn
-    gn = ensembl.get_genenames()
+    gn = genenames.get_genenames()
     gn['alias'] = gn.T.apply(
         lambda x: [x.symbol, x['name']] + #optionally add other names such as protein names here
         (
