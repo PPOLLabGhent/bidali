@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name = 'bidali',
-      version = '0.1.15',
+      version = '0.1.16',
       description = 'Biological Data Analysis Library',
       url = 'https://github.com/dicaso/bidali',
       author = 'Christophe Van Neste',
@@ -11,6 +11,7 @@ setup(name = 'bidali',
       python_requires='>3.6',
       install_requires = [
           #Generated with `pipreqs .` and then moved here from requirements.txt
+          'kindi',
           'networkx',
           'biomart',
           'pandas',
