@@ -12,6 +12,7 @@ setup(name = 'bidali',
       install_requires = [
           #Generated with `pipreqs .` and then moved here from requirements.txt
           'kindi',
+          'lostdata',
           'networkx',
           'biomart',
           'pandas',
