@@ -3,7 +3,7 @@
 
 Module for comparitive genomics
 """
-import numpy as np
+import numpy as np, pandas as pd
 import os, re
 from scipy import sparse
 from collections import OrderedDict
@@ -83,7 +83,7 @@ class DotPlot(object):
             except ValueError:
                 pass
 
-    def plot(self,markersize=5,colorReverseComplement='g'):
+    def plot(self,markersize=5,colorReverseComplement='g',ax=None):
         """Plot dotmatrix
         
         Args:
@@ -93,8 +93,9 @@ class DotPlot(object):
         """
         import matplotlib.pyplot as plt
         coo = self.dotmatrix.tocoo()
-        fig = plt.figure(figsize=(10,10))
-        ax = fig.add_subplot(111)
+        if not ax:
+            fig = plt.figure(figsize=(10,10))
+            ax = fig.add_subplot(111)
         if colorReverseComplement:
             selection = coo.data == 1
             ax.plot(coo.col[selection], coo.row[selection], 's', color='black', ms=markersize)
@@ -110,8 +111,58 @@ class DotPlot(object):
         ax.xaxis.set_label_position('top') 
         ax.invert_yaxis()
         ax.set_ylabel(os.path.basename(self.fasta1))
-        plt.show()
+        self.ax = ax
+        return ax
 
+    def plot_contig_lines(self,shorty=.05):
+        ycontigs = (
+            pd.DataFrame(self.seq1_contigs).rename({0:'start',1:'stop'}).T/self.window
+        ).round()
+        xcontigs = (
+            pd.DataFrame(self.seq2_contigs).rename({0:'start',1:'stop'}).T/self.window
+        ).round()
+        self.ax.grid(False)
+        self.ax.set_xticklabels([])
+        self.ax.set_yticklabels([])
+        for ycrow in ycontigs.iterrows():
+            self.ax.axhline(ycrow[1].stop)
+        for xcrow in xcontigs.iterrows():
+            if shorty:
+                self.ax.axvline(xcrow[1].stop,ymax=shorty)
+                self.ax.axvline(xcrow[1].stop,ymin=1-shorty)
+            else: self.ax.axvline(xcrow[1].stop)
+        
+    def plot_shade_diagonal(self,threshold=.1,color='0.75',circular=True):
+        """Shade the diagonal in the dotplot
+        indicating the region of collinear genomes
+
+        very similar genomes should stay in this area
+
+        Args:
+            threshold (float): Should be in range 0-1, indicating the ratio of
+              the reference genome lenght that is taken as the shade diameter
+        """
+        ymax = len(self.seq1)/self.window
+        xmax = len(self.seq2)/self.window
+        threshold = ymax*threshold/2
+        # Central diagonal
+        x = [0,xmax]
+        y1 = [-threshold,xmax-threshold]
+        y2 = [threshold,xmax+threshold]
+        self.ax.fill_between(x,y1,y2,color=color)
+        # Corners (possibly relevant for circular chromosomes)
+        if circular:
+            # Left-bottom corner
+            x = [0,threshold]
+            y1 = [ymax-threshold,ymax]
+            y2 = [ymax,ymax]
+            self.ax.fill_between(x,y1,y2,color=color)
+            # Right-top corner
+            x = [xmax-threshold,xmax]
+            y1 = [0,0]
+            y2 = [0,threshold]
+            self.ax.fill_between(x,y1,y2,color=color)
+        
     def sort_genome_according_to_reference(self,filename=None):
         """Sort fasta2 genome
 
@@ -119,7 +170,6 @@ class DotPlot(object):
         to determine if complement is better fit or not
         output new fasta file
         """
-        import pandas as pd
         coo = self.dotmatrix.tocoo()
         probes = pd.DataFrame({
             'seq1_pos': coo.row*self.window,
