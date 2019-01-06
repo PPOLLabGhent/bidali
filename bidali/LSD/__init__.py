@@ -494,7 +494,7 @@ def get_proteinNetworks():
     Source: http://string-db.org/mapping_files/entrez_mappings/entrez_gene_id.vs.string.v10.28042015.tsv
     """
     import networkx as nx
-    from bidali.LSD.dealer.external import entrez
+    from bidali.LSD.dealer import entrez
     
     #Biogrid
     with ZipFile(datadir+'ProteinNetworks/BIOGRID-ALL-3.4.147.tab2.zip') as biogridzip:
