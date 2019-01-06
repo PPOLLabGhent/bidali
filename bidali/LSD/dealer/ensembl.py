@@ -36,8 +36,15 @@ def get_biomart(atts=None,dataset='hsapiens_gene_ensembl'):
 def get_ensembl(onlyGeneLabeled=True,onlyInChromosomes=None):
     import warnings
     warnings.warn("deprecated, use get_biomart instead", DeprecationWarning)
-    ensembl = pd.read_table(datadir+'Genomes/Ensembl/Biomart/idmapping_extended.txt',
-                        header=None,index_col=0,names=('egid','etid','start','stop','gcC','chr','strand','TSS','typeg','typet','gene_label','entrez'))
+    ensembl = get_biomart(
+        atts=[
+            'ensembl_gene_id','ensembl_transcript_id','start_position','end_position',
+            'percentage_gene_gc_content','chromosome_name','strand','transcript_start',
+            'gene_biotype','transcript_biotype','external_gene_name','entrezgene'
+            ]
+        )
+    ensembl.columns = ['egid','etid','start','stop','gcC','chr','strand','TSS','typeg','typet','gene_label','entrez']
+    ensembl.set_index('egid',inplace=True)
     ensembl = ensembl[~ensembl.index.duplicated()]
     if onlyGeneLabeled: ensembl = ensembl[ensembl.gene_label.isnull().apply(lambda x: not(x))]
     ensembl.chr = ensembl.chr.apply(lambda x: 'chr'+x.replace('MT','M'))
