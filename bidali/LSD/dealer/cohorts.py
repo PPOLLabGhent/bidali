@@ -30,8 +30,8 @@ def get_NRC(datadir=datadir+'NRC_data_AFW/'):
 
     # Copy number variant data
     lo=LSD.get_liftover(frm=18,to=38)
-    segments = pd.read_table(expanduser('~/Dropbox (speleman lab)/\
-Lab/z_archive/AFW/project_CONEXIC/NRC_data/01_JISTIC/20111106_NRCdata_wavecorrected_en_Dublin_CBS.txt'))
+    ## Original location Dropbox (speleman lab)/Lab/z_archive/
+    segments = pd.read_table(datadir+'AFW/project_CONEXIC/NRC_data/01_JISTIC/20111106_NRCdata_wavecorrected_en_Dublin_CBS.txt')
     segments.chromosome = segments.chromosome.apply(
         lambda x: 'chrX' if x == 23 else 'chrY' if x == 24 else 'chr{}'.format(x))
     segments['Start38'] = segments.T.apply(
