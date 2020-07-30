@@ -132,16 +132,24 @@ class CoexDataset(IntegratedDataset):
     *conugeal* is calculated based on *conureal* and the genes in
     *expression*.
 
+    *conureal* is currently not cached, and bidali functions do not use it.
+    This caching behavior might change in the future, but should be backwards
+    compatible.
+
     Args:
         conugeal (pd.DataFrame): Copy number gene alterations, samples should be columns and genes rows.
         expression (pd.DataFrame): Expression data, samples should be columns and genes rows.
         metadata (pd.DataFrame): Annotation data should be columns and samples rows.
-            Recommended columns are `DOD` (bool, "dead of disease"), `POD` (bool, "progress of disease"), `overallSurvival` (int), `progressionFreeSurvival` (int)
-        metadataColMapping (dict): dict if metadata column names need to be changed to follow recommendations, e.g. {'survived':'DOD'}.
+            Recommended columns are `DOD` (bool, "dead of disease"), `POD` (bool, "progress of disease"), 
+            `overallSurvival` (int), `progressionFreeSurvival` (int)
+        metadataColMapping (dict): dict if metadata column names need to be changed to follow recommendations, 
+            e.g. {'survived':'DOD'}.
         conureal (pd.DataFrame): Copy number region alterations. 
             Required columns are `chrom`, `chromStart`, `chromEnd` and `samples`.
-        conurealColMapping (dict): dict if conureal column names need to be changed to follow requirements , e.g. {'chr':'chrom'}
-        filterUnknownExpressed (bool): If True, genes for which there is no expression data, will be filtered from conugeal.
+        conurealColMapping (dict): dict if conureal column names need to be changed to follow requirements, 
+            e.g. {'chr':'chrom'}
+        filterUnknownExpressed (bool): If True, genes for which there is no expression data, will be 
+            filtered from conugeal.
     """
     def __init__(self,conugeal,expression,metadata,metadataColMapping={},conureal=None,conurealColMapping={},filterUnknownExpressed=True):
         # Applying col mapping

@@ -29,7 +29,7 @@ setup(name = 'bidali',
           'tzlocal'
       ],
       extras_require = {
-          'retro': ['rpy2'],
+          'retro': ['rpy2==2.9.2'], # latest version currently not working on Mac OS X
           'documentation': ['Sphinx']
       },
       zip_safe = False,
