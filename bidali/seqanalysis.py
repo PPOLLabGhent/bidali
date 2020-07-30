@@ -100,12 +100,13 @@ def loadHumanGenome():
     Source: ftp://ftp.ensembl.org/pub/release-91/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.chromosome.22.fa.gz
     Source: ftp://ftp.ensembl.org/pub/release-91/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.chromosome.X.fa.gz
     Source: ftp://ftp.ensembl.org/pub/release-91/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.chromosome.Y.fa.gz
+    Source: ftp://ftp.ensembl.org/pub/release-91/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.chromosome.MT.fa.gz
 
     """
     from glob import glob
     import gzip
     files = glob(processedDataStorage+'Homo_sapiens.GRCh38.dna.chromosome.*')
-    if not files: raise FileNotFoundError
+    if not files: raise FileNotFoundError #TODO raise when amount of files is not as expected
     chromosomes = []
     for f in files:
         with gzip.open(f,mode='rt') as fh:
