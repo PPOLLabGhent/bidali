@@ -13,7 +13,7 @@ class test_drawGeneEnvNetwork(TestCase):
         del self.gene
 
     def test_drawGeneEnvNetwork(self):
-        with patch('bidali.LSD.get_proteinNetworks') as nw:
+        with patch('lostdata.get_proteinNetworks') as nw:
             nw().__getattribute__ = nw().mockgetattribute
             nw().mockgetattribute.return_value = nw().stringnx
             fig = drawGeneEnvNetwork(self.gene)

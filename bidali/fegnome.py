@@ -212,7 +212,7 @@ def rankSumProbability(ranks, geneset, alternative='greater',
     ranksum = ranks[ranks.index.isin(geneset)].sum()
     if nulldistrosave:
         import pickle,hashlib
-        from bidali import LSD
+        import lostdata as LSD
         hashindex = hashlib.md5(str(tuple(sorted(ranks))).encode()).hexdigest()
         try: nulldistros = pickle.load(open(LSD.processedDataStorage+'ranklogsum_nulldistros.pickle','rb'))
         except FileNotFoundError: nulldistros = {}

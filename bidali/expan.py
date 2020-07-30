@@ -71,7 +71,7 @@ class Expan:
         self._robjects = {} #dict to save private R objects
         if annotations is not None: self.annotations = annotations
         else:
-            from bidali.LSD.dealer.ensembl import get_biomart
+            from lostdata.dealer.ensembl import get_biomart
             biomart = get_biomart()
             biomart = biomart[~biomart['Gene stable ID'].duplicated()]
             biomart = biomart.set_index('Gene stable ID')
@@ -170,7 +170,7 @@ class Expan:
         if genesets:
             gscollections = {'custom': genesets}
         else:
-            from bidali import LSD
+            import lostdata as LSD
             gscollections = LSD.get_msigdb6()
         # deduplicate gene exdif results
         results_deduplicated = {

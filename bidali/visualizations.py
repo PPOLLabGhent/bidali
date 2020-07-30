@@ -22,7 +22,7 @@ import networkx as nx
 from inspect import getmembers
 from unittest.mock import MagicMock as Mock
 from collections import OrderedDict
-from bidali import LSD
+import lostdata as LSD
 import itertools
 
 #TODO http://bokeh.pydata.org/en/latest/docs/gallery.html#gallery
