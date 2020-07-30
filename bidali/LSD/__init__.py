@@ -17,6 +17,17 @@ from ..config import config
 processedDataStorage = config['LSD']['cachedir']
 datadir = config['LSD']['privatedir']
 
+# Check file locations
+if not (
+        os.path.exists(datadir) and
+        os.path.exists(processedDataStorage)
+        ):
+    import warnings
+    warnings.warn(
+        'Create directory %s or %s for bidali.LSD to function properly, or configure cachedir/privatedir'
+        % (datadir, processedDataStorage)
+    )
+
 ## Utility functions
 def getLSDataset(name,**kwargs):
     try: return name(**kwargs)
@@ -464,15 +475,7 @@ def storeDatasetLocally(dataset_getfunction):
 
 ## Datasets
 ### References/annotations
-from .dealer.external.ensembl import get_ensembl, get_ensemblGeneannot
-
-@retrieveSources
-def get_entrez():
-    """
-    Source: ftp://ftp.ncbi.nih.gov/refseq/H_sapiens/RefSeqGene/gene_RefSeqGene
-    """
-    entrez = pd.read_table(processedDataStorage+'gene_RefSeqGene', index_col='GeneID')
-    return entrez
+from .dealer.ensembl import get_ensembl, get_ensemblGeneannot
 
 @retrieveSources
 def get_liftover(frm=19,to=38):
@@ -499,7 +502,8 @@ def get_proteinNetworks():
     Source: http://string-db.org/mapping_files/entrez_mappings/entrez_gene_id.vs.string.v10.28042015.tsv
     """
     import networkx as nx
-
+    from bidali.LSD.dealer import entrez
+    
     #Biogrid
     with ZipFile(datadir+'ProteinNetworks/BIOGRID-ALL-3.4.147.tab2.zip') as biogridzip:
         ds = pd.read_table(TextIOWrapper(biogridzip.open('BIOGRID-ALL-3.4.147.tab2.txt','r')),low_memory=False)
@@ -510,7 +514,7 @@ def get_proteinNetworks():
     #String-DB
     stringdb = pd.read_table(gzip.open(datadir+'ProteinNetworks/9606.protein.links.v10.txt.gz','rt'),sep=' ')
     stringids = pd.read_table(datadir+'ProteinNetworks/entrez_gene_id.vs.string.v10.28042015.tsv',index_col='STRING_Locus_ID')
-    entrez = get_entrez()
+    entrez = entrez.get_refseq()
     stringids = stringids[stringids['#Entrez_Gene_ID'].isin(entrez.index)]
     stringdb = stringdb[stringdb.combined_score > 400] #study stringdb.combined_score.hist(bins='auto') to set threshold
     stringdb = stringdb[stringdb.protein1.isin(stringids.index) & stringdb.protein2.isin(stringids.index)]

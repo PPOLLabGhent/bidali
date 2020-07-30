@@ -27,8 +27,18 @@ config['LSD'] = {
     'privatedir': os.path.expanduser('~/LSData/private/')
 }
 
+config['plotting'] = {
+    'mpl_backend': 'TkAgg',
+    'interactive': 'yes',
+    'use_seaborn_bug_workaround': 'no'
+}
+
 # Read configuration file
 for configFile in configFileOptions:
     if os.path.exists(configFile):
         config.read(configFile)
         break #only reads the first config file found
+
+# Secrets: config for storing user API keys and other sensitive/personal information
+from kindi import Secrets
+secrets = Secrets(default_section=__package__)

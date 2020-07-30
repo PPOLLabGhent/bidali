@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name = 'bidali',
-      version = '0.1.13',
+      version = '0.1.16',
       description = 'Biological Data Analysis Library',
       url = 'https://github.com/dicaso/bidali',
       author = 'Christophe Van Neste',
@@ -11,11 +11,12 @@ setup(name = 'bidali',
       python_requires='>3.6',
       install_requires = [
           #Generated with `pipreqs .` and then moved here from requirements.txt
+          'kindi',
+          'lostdata',
           'networkx',
           'biomart',
           'pandas',
           'xarray',
-          'netCDF4',
           'gffutils',
           'scipy',
           'numpy',
@@ -29,7 +30,9 @@ setup(name = 'bidali',
           'tzlocal'
       ],
       extras_require = {
-          'retro': ['rpy2==2.9.2'], # latest version currently not working on Mac OS X
+          'retro': ['rpy2'],
+          #for netCDF4 output, depends on: libnetcdf-dev libhdf5-dev
+          'netcdf': ['netCDF4'],
           'documentation': ['Sphinx']
       },
       zip_safe = False,

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
+from .config import config
 # Plotting imports
 import matplotlib as mpl
-mpl.use("TkAgg")
+mpl.use(config['plotting']['mpl_backend'])
 import matplotlib.pyplot as plt
 import matplotlib.patches as ptch
 import seaborn as sns
@@ -9,9 +10,11 @@ import seaborn as sns
 sns.set(style="whitegrid", palette="pastel", color_codes=True)
 # Set matplotlib to interactive mode when executed from interactive shell
 import os
-if 'ps1' in vars(os.sys):
+if 'ps1' in vars(os.sys) and config['plotting']['interactive'] == 'yes':
     plt.ion()
-    fig, ax = plt.subplots() #TODO for the moments prevents crashes, but very hacky solution
+    if config['plotting']['use_seaborn_bug_workaround'] == 'yes':
+        #TODO for the moments prevents crashes, but very hacky solution
+        fig, ax = plt.subplots()
 
 # Data processing imports
 import numpy as np, pandas as pd

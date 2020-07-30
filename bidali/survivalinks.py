@@ -16,15 +16,15 @@ def geneImpactSurvival(gene,expressions,metadata,groupingByQuantile=0.5,grouping
         expressions = expressions[expressions.columns[filter]]
         metadata = metadata[filter]
     if grouping is None:
-        cutoff = expressions.ix[gene].quantile(groupingByQuantile) if groupingByQuantile else expressions.ix[gene].mean()
-        groupHigh = expressions.ix[gene] > cutoff
+        cutoff = expressions.loc[gene].quantile(groupingByQuantile) if groupingByQuantile else expressions.loc[gene].mean()
+        groupHigh = expressions.loc[gene] > cutoff
     else: groupHigh = grouping
 
     kmf = KaplanMeierFitter()
     
     try: kmf.fit(metadata[metacensorcol][~groupHigh], metadata[metaDFDcol][~groupHigh], label='low')
     except ValueError: return None
-    lastlow = float(kmf.survival_function_.ix[kmf.survival_function_.last_valid_index()])
+    lastlow = float(kmf.survival_function_.loc[kmf.survival_function_.last_valid_index()])
     if plot:
         if type(plot) is bool:
             ax = kmf.plot()
@@ -32,7 +32,7 @@ def geneImpactSurvival(gene,expressions,metadata,groupingByQuantile=0.5,grouping
 
     try: kmf.fit(metadata[metacensorcol][groupHigh], metadata[metaDFDcol][groupHigh], label='high')
     except ValueError: return None
-    lasthigh = float(kmf.survival_function_.ix[kmf.survival_function_.last_valid_index()])
+    lasthigh = float(kmf.survival_function_.loc[kmf.survival_function_.last_valid_index()])
     if plot: kmf.plot(ax=ax)
 
     results = logrank_test(metadata[metacensorcol][groupHigh], metadata[metacensorcol][~groupHigh],
@@ -51,8 +51,8 @@ def geneCombinationImpactSurvival(genes,expressions,metadata,groupingByQuantile=
                        metacensorcol="overall_survival",metaDFDcol="death_from_disease",
                        plot=False,rounding=2):
     from itertools import combinations
-    cutoff = {gene:expressions.ix[gene].quantile(groupingByQuantile) if groupingByQuantile else expressions.ix[gene].mean() for gene in genes}
-    groupHigh = [expressions.ix[gene] > cutoff[gene] for gene in genes]
+    cutoff = {gene:expressions.loc[gene].quantile(groupingByQuantile) if groupingByQuantile else expressions.loc[gene].mean() for gene in genes}
+    groupHigh = [expressions.loc[gene] > cutoff[gene] for gene in genes]
     kmf = KaplanMeierFitter()
 
     genis = [(i,s) for i in range(len(genes)) for s in ('H','L')]
@@ -64,7 +64,7 @@ def geneCombinationImpactSurvival(genes,expressions,metadata,groupingByQuantile=
             selection = selection & (groupHigh[gsel[0]] if gsel[1] == 'H' else ~groupHigh[gsel[0]])
         if sum(selection) == 0: continue
         kmf.fit(metadata[metacensorcol][selection], metadata[metaDFDcol][selection], label=''.join(combi))
-        lastvalues[combi] = (sum(selection),float(kmf.survival_function_.ix[kmf.survival_function_.last_valid_index()]))
+        lastvalues[combi] = (sum(selection),float(kmf.survival_function_.loc[kmf.survival_function_.last_valid_index()]))
         try: kmf.plot(ax=ax)
         except NameError: ax = kmf.plot()
 
@@ -91,7 +91,7 @@ def subsetsImpactSurvival(subsets,metadata,metacensorcol="overall_survival",
     lastvalues = {}
     for subset in subsets:
         kmf.fit(metadata[metacensorcol][subsets[subset]], metadata[metaDFDcol][subsets[subset]], label=subset)
-        lastvalues[subset] = (sum(subsets[subset]),float(kmf.survival_function_.ix[kmf.survival_function_.last_valid_index()]))
+        lastvalues[subset] = (sum(subsets[subset]),float(kmf.survival_function_.loc[kmf.survival_function_.last_valid_index()]))
         try: kmf.plot(ax=ax)
         except NameError: ax = kmf.plot()
 
@@ -102,12 +102,12 @@ def subsetsImpactSurvival(subsets,metadata,metacensorcol="overall_survival",
 # 2-way survival curves
 def twoGeneSurvivalPlot(g1,g2,expressionData,metadata,ax=None):
     if not ax: f,ax = plt.subplots()
-    g1med = expressionData.ix[g1].median()
-    g2med = expressionData.ix[g2].median()
-    gHH = expressionData.columns[(expressionData.ix[g1]>g1med)&(expressionData.ix[g2]>g2med)] #High g1, high g2
-    gHL = expressionData.columns[(expressionData.ix[g1]>g1med)&(expressionData.ix[g2]<=g2med)]
-    gLH = expressionData.columns[(expressionData.ix[g1]<=g1med)&(expressionData.ix[g2]>g2med)]
-    gLL = expressionData.columns[(expressionData.ix[g1]<=g1med)&(expressionData.ix[g2]<=g2med)]
+    g1med = expressionData.loc[g1].median()
+    g2med = expressionData.loc[g2].median()
+    gHH = expressionData.columns[(expressionData.loc[g1]>g1med)&(expressionData.loc[g2]>g2med)] #High g1, high g2
+    gHL = expressionData.columns[(expressionData.loc[g1]>g1med)&(expressionData.loc[g2]<=g2med)]
+    gLH = expressionData.columns[(expressionData.loc[g1]<=g1med)&(expressionData.loc[g2]>g2med)]
+    gLL = expressionData.columns[(expressionData.loc[g1]<=g1med)&(expressionData.loc[g2]<=g2med)]
     kmf = KaplanMeierFitter()
     for g,a in zip((gHH,gHL,gLH,gLL),('HH','HL','LH','LL')):
         kmf.fit(metadata.lastfollowup[metadata.index.isin(g)],
