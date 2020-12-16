@@ -104,8 +104,8 @@ def loadHumanGenome():
 
     """
     from glob import glob
-    import gzip
-    files = glob(processedDataStorage+'Homo_sapiens.GRCh38.dna.chromosome.*')
+    import gzip, os
+    files = glob(os.path.join(processedDataStorage, 'Homo_sapiens.GRCh38.dna.chromosome.*'))
     if not files: raise FileNotFoundError #TODO raise when amount of files is not as expected
     chromosomes = []
     for f in files:
