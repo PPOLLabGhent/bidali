@@ -3,6 +3,7 @@
 #General imports
 import numpy as np
 from lostdata import storeDatasetLocally, retrieveSources, processedDataStorage
+from lostdata.dealer.ensembl import get_ensemblGeneannot as get_ensembl
 
 def recomplement(dna):
     """
