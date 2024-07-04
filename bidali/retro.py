@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 #R exposed top routines
 import pickle, re, sys, operator
-import lostdata as LSD
+from bidali import LSD
 import pandas as pd, numpy as np
 from collections import OrderedDict
 import matplotlib.pyplot as plt
-from rpy2.rinterface import RRuntimeError
+from rpy2.rinterface_lib.embedded import RRuntimeError
 from rpy2.robjects.packages import importr
 import rpy2.robjects as ro
 #Activate automatic pandas/r conversion
 from rpy2.robjects import pandas2ri
-pandas2ri.activate()
+#pandas2ri.activate()
 
 # General importr's
 base = importr('base')

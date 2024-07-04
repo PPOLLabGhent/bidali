@@ -30,7 +30,7 @@ setup(name = 'bidali',
           'tzlocal'
       ],
       extras_require = {
-          'retro': ['rpy2'],
+          'retro': ['rpy2==3.5.15'],
           #for netCDF4 output, depends on: libnetcdf-dev libhdf5-dev
           'netcdf': ['netCDF4'],
           'documentation': ['Sphinx']
