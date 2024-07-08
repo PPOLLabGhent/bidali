@@ -1,8 +1,11 @@
 #!/bin/env python3
 #CVN set of functions for sequence analysis
 #General imports
+import os
 import numpy as np
+import pandas as pd
 from lostdata import storeDatasetLocally, retrieveSources, processedDataStorage
+from lostdata.dealer.ensembl import get_ensemblGeneannot as get_ensembl
 
 def recomplement(dna):
     """
@@ -104,7 +107,7 @@ def loadHumanGenome():
 
     """
     from glob import glob
-    import gzip, os
+    import gzip
     files = glob(os.path.join(processedDataStorage, 'Homo_sapiens.GRCh38.dna.chromosome.*'))
     if not files: raise FileNotFoundError #TODO raise when amount of files is not as expected
     chromosomes = []
@@ -167,6 +170,11 @@ Y      Y  10316945   10544039"""
     del genome
 
     ensembl = get_ensembl()
+    ensembl = pd.DataFrame(
+        [(g.id, 'chr'+g.chrom, g.start, g.stop, g.strand, g.attributes['gene_name'][0])
+            for g in ensembl.features_of_type('gene')],
+        columns=('id','chr','start','stop','strand','name')
+    )
     ensembl = ensembl[ensembl.chr.isin(centromereshg38.index)]
     ensembl['chrarm'] = ensembl.apply(lambda x: 'p' if x.stop < centromereshg38.loc[x.chr].left_base else
                                   ('q' if x.start > centromereshg38.loc[x.chr].right_base else 'pq'),axis=1)
