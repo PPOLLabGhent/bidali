@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #R exposed top routines
 import pickle, re, sys, operator
-from bidali import LSD
+import lostdata as LSD
 import pandas as pd, numpy as np
 from collections import OrderedDict
 import matplotlib.pyplot as plt

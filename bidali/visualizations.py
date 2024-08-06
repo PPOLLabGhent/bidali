@@ -2,7 +2,7 @@
 from .config import config
 # Plotting imports
 import matplotlib as mpl
-mpl.use(config['plotting']['mpl_backend'])
+#mpl.use(config['plotting']['mpl_backend']) #should be set by user
 import matplotlib.pyplot as plt
 import matplotlib.patches as ptch
 import seaborn as sns
@@ -91,7 +91,7 @@ def drawCNAcircos(cnaPositions,cnaTotal=False,chrRange=None,sortPositions=True,
     
     for cna in cnaPositions:
         if wedgebgshade: ax.add_patch(ptch.Wedge((0,0),r,startAngle,startAngle+wedgeDegrees,fc=wedgebgshade))
-        wedge = ptch.Wedge((0,0),max(cna)-minChr,startAngle,startAngle+wedgeDegrees,width=max(cna)-min(cna),fc=color)#,ec=color)
+        wedge = ptch.Wedge((0,0),max(cna)-minChr,startAngle,startAngle+wedgeDegrees,width=max(cna)-min(cna),fc=color,ec=color)
         startAngle+=wedgeDegrees
         ax.add_patch(wedge)
     # Add circle edge for chr zoom
@@ -168,13 +168,13 @@ def dosageViolin(gene,dataset,ax=None,cntype='gain',risksToPlot=3):
     >>> dosageViolin('BRIP1',dataset=Mock()) # doctest: +SKIP
     """
     ds = dataset
-    genedosage = pd.DataFrame({'expression': ds.exprdata.ix[gene],
-                               'cna': ds.geneCNA.ix[gene],
+    genedosage = pd.DataFrame({'expression': ds.exprdata.loc[gene],
+                               'cna': ds.geneCNA.loc[gene],
     }).dropna()
-    genedosage['risk_status'] = (genedosage.T.apply(lambda x: 'high' if ds.metadata.ix[x.name].high_risk=='1' else 'low')
+    genedosage['risk_status'] = (genedosage.T.apply(lambda x: 'high' if ds.metadata.loc[x.name].high_risk=='1' else 'low')
                                  if risksToPlot == 2 else
-                                 genedosage.T.apply(lambda x: 'lowrisk' if ds.metadata.ix[x.name].high_risk == '0' else
-                                                   'highrisk_amp' if ds.metadata.ix[x.name].mycn_status == '1' else 'highrisk_sc')
+                                 genedosage.T.apply(lambda x: 'lowrisk' if ds.metadata.loc[x.name].high_risk == '0' else
+                                                   'highrisk_amp' if ds.metadata.loc[x.name].mycn_status == '1' else 'highrisk_sc')
     )
     
     genedosage = genedosage[genedosage.cna!=('loss' if cntype=='gain' else 'gain')]
