@@ -4,7 +4,7 @@
 import os
 import numpy as np
 import pandas as pd
-from lostdata import storeDatasetLocally, retrieveSources, processedDataStorage
+from lostdata.processing import storeDatasetLocally, retrieveSources, processedDataStorage
 from lostdata.dealer.ensembl import get_ensemblGeneannot as get_ensembl
 
 def recomplement(dna):
@@ -187,6 +187,88 @@ Y      Y  10316945   10544039"""
     del ensembl
 
     return centromereshg38
+
+
+def get_centromeres_hg19():
+    """
+    Source: hg19 centromere positions.
+    """
+    from bidali.seqanalysis import loadHumanGenome
+    
+    # Centromere positions for hg19 (as per UCSC Genome Browser)
+    centromereshg19 = """1      1  121535434  122227999
+2      2  92280923   93235083
+3      3  90624140   93645123
+4      4  49653707   51907379
+5      5  45461453   49233429
+6      6  58550267   59672769
+7      7  58499891   60930441
+8      8  43861953   45937043
+9      9  43347223   45372555
+10    10  39552494   41455798
+11    11  51074379   54259268
+12    12  34842886   37310189
+13    13  16000001   18046601
+14    14  16000001   18174892
+15    15  17000001   19778853
+16    16  36280611   38347607
+17    17  22802406   26792423
+18    18  15472766   20853106
+19    19  24464388   27053569
+20    20  26473426   29924481
+21    21  10864396   12911260
+22    22  12945960   15062510"""
+    
+    # Parse centromere data into a DataFrame
+    centromereshg19 = pd.DataFrame([c.split()[-3:] for c in centromereshg19.split('\n')],
+                                   columns="chrom left_base right_base".split())
+    centromereshg19.index = centromereshg19.chrom.apply(lambda x: 'chr'+x)
+    centromereshg19['left_base'] = centromereshg19.pop('left_base').apply(int)
+    centromereshg19['right_base'] = centromereshg19.pop('right_base').apply(int)
+    
+    # Load human genome to get chromosome lengths
+    genome = loadHumanGenome()
+    
+    # Calculate additional centromere properties
+    centromereshg19['len'] = centromereshg19.apply(lambda x: len(genome.chromosomes[x.name]), axis=1)
+    centromereshg19['qlen'] = centromereshg19.len - centromereshg19.right_base
+    centromereshg19['chr_weight'] = centromereshg19.len / centromereshg19.len.max()
+    centromereshg19['q_weight'] = centromereshg19.qlen / centromereshg19[['left_base', 'qlen']].max().max()
+    centromereshg19['p_weight'] = centromereshg19.left_base / centromereshg19[['left_base', 'qlen']].max().max()
+    
+    # Clean up genome to free memory
+    del genome
+    
+    # Load Ensembl gene data
+    ensembl = get_ensembl()
+    ensembl = pd.DataFrame(
+        [(g.id, 'chr' + g.chrom, g.start, g.stop, g.strand, g.attributes['gene_name'][0])
+         for g in ensembl.features_of_type('gene')],
+        columns=('id', 'chr', 'start', 'stop', 'strand', 'name')
+    )
+    
+    # Filter Ensembl genes that intersect with centromere data
+    ensembl = ensembl[ensembl.chr.isin(centromereshg19.index)]
+    
+    # Classify genes by chromosomal arm (p, q, or pq)
+    ensembl['chrarm'] = ensembl.apply(lambda x: 'p' if x.stop < centromereshg19.loc[x.chr].left_base else
+                                      ('q' if x.start > centromereshg19.loc[x.chr].right_base else 'pq'), axis=1)
+    
+    # Calculate number of genes per chromosome and arm
+    centromereshg19['chr_genes'] = ensembl.groupby('chr').size()
+    centromereshg19['p_genes'] = ensembl[ensembl.chrarm == 'p'].groupby('chr').size()
+    centromereshg19['q_genes'] = ensembl[ensembl.chrarm == 'q'].groupby('chr').size()
+    
+    # Weighting based on the number of genes
+    centromereshg19['chr_gweight'] = centromereshg19.chr_genes / centromereshg19.chr_genes.max()
+    centromereshg19['q_gweight'] = centromereshg19.q_genes / centromereshg19[['p_genes', 'q_genes']].max().max()
+    centromereshg19['p_gweight'] = centromereshg19.p_genes / centromereshg19[['p_genes', 'q_genes']].max().max()
+    
+    # Clean up Ensembl to free memory
+    del ensembl
+    
+    return centromereshg19
+
 
 class PFM():
     def __init__(self,pfmfile):
